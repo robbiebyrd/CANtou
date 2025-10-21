@@ -82,7 +82,6 @@ func (c *InfluxDBClient) worker() {
 			now := time.Now()
 			c.workerLastRan = now
 			c.count += len(msgChunk)
-			fmt.Printf("PROC %v\n", c.count)
 		}
 	}
 }

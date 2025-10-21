@@ -21,7 +21,7 @@ type CSVClient struct {
 func NewClient(ctx *context.Context, cfg canModels.Config, logger *slog.Logger) canModels.DBClient {
 	file, err := os.OpenFile(cfg.CSVLog.OutputFile, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
-		fmt.Printf("Error opening file with flags...")
+		fmt.Printf("Error opening file...")
 		panic(err)
 	}
 
