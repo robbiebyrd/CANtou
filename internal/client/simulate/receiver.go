@@ -42,7 +42,7 @@ func (scc *SimulationCanClient) Receive(wg *sync.WaitGroup) {
 			scc.count++
 			scc.l.Debug(fmt.Sprintf("emitted simulated can message #%v", scc.count))
 
-			time.Sleep(time.Duration(scc.rate) * time.Millisecond)
+			time.Sleep(time.Duration(scc.rate) * time.Microsecond)
 		}
 	})
 }

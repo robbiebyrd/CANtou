@@ -13,15 +13,16 @@ import (
 )
 
 type CSVClient struct {
-	w              *csv.Writer
-	includeHeaders bool
-	messageBlock   []canModels.CanMessage
+	w               *csv.Writer
+	includeHeaders  bool
+	messageBlock    []canModels.CanMessage
+	incomingChannel chan canModels.CanMessage
 }
 
 func NewClient(ctx *context.Context, cfg canModels.Config, logger *slog.Logger) canModels.DBClient {
 	file, err := os.OpenFile(cfg.CSVLog.OutputFile, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
-		fmt.Printf("Error opening file...")
+		fmt.Printf("Error opening file %v\n")
 		panic(err)
 	}
 
@@ -32,22 +33,39 @@ func NewClient(ctx *context.Context, cfg canModels.Config, logger *slog.Logger) 
 	writer.Write(header)
 
 	return &CSVClient{
-		w:              writer,
-		includeHeaders: cfg.CSVLog.IncludeHeaders,
-		messageBlock:   []canModels.CanMessage{},
+		w:               writer,
+		includeHeaders:  cfg.CSVLog.IncludeHeaders,
+		messageBlock:    []canModels.CanMessage{},
+		incomingChannel: make(chan canModels.CanMessage, cfg.MessageBufferSize),
 	}
 }
 
 func (c *CSVClient) Handle(msg canModels.CanMessage) {
-	row := []string{strconv.FormatInt(msg.Timestamp, 10), strconv.FormatUint(uint64(msg.ID), 10), msg.Interface, strconv.FormatBool(msg.Remote), strconv.FormatBool(msg.Transmit), strconv.Itoa(int(msg.Length)), hex.EncodeToString(msg.Data)}
+	row := []string{
+		strconv.FormatInt(msg.Timestamp, 10),
+		strconv.FormatUint(uint64(msg.ID), 10),
+		msg.Interface,
+		strconv.FormatBool(msg.Remote),
+		strconv.FormatBool(msg.Transmit),
+		strconv.Itoa(int(msg.Length)),
+		hex.EncodeToString(msg.Data)}
 	c.w.Write(row)
 	c.w.Flush()
 }
 
-func (c *CSVClient) HandleChannel(channel chan canModels.CanMessage) {
-	for msg := range channel {
+func (c *CSVClient) HandleChannel() error {
+	for msg := range c.incomingChannel {
 		c.Handle(msg)
 	}
+	return nil
+}
+
+func (c *CSVClient) GetChannel() chan canModels.CanMessage {
+	return c.incomingChannel
+}
+
+func (c *CSVClient) GetName() string {
+	return "repo-csv"
 }
 
 func (c *CSVClient) Run() error {
