@@ -22,11 +22,12 @@ type InfluxDBClient struct {
 	wg              sync.WaitGroup
 	maxBlocks       int
 	maxConnections  int
-	channel         chan []canModels.CanMessage
+	internalChannel chan []canModels.CanMessage
 	flushTime       int // ms
 	l               *slog.Logger
 	workerLastRan   time.Time
 	count           int
+	incomingChannel chan canModels.CanMessage
 }
 
 func NewClient(ctx *context.Context, cfg canModels.Config, logger *slog.Logger) canModels.DBClient {
@@ -52,7 +53,8 @@ func NewClient(ctx *context.Context, cfg canModels.Config, logger *slog.Logger) 
 		maxBlocks:       cfg.InfluxDB.MaxWriteLines,
 		maxConnections:  cfg.InfluxDB.MaxConnections,
 		flushTime:       cfg.InfluxDB.FlushTime,
-		channel:         make(chan []canModels.CanMessage),
+		internalChannel: make(chan []canModels.CanMessage),
+		incomingChannel: make(chan canModels.CanMessage, cfg.MessageBufferSize),
 		wg:              sync.WaitGroup{},
 	}
 }
@@ -60,22 +62,31 @@ func NewClient(ctx *context.Context, cfg canModels.Config, logger *slog.Logger) 
 func (c *InfluxDBClient) Handle(msg canModels.CanMessage) {
 	c.messageBlock = append(c.messageBlock, msg)
 	if len(c.messageBlock) >= c.maxBlocks {
-		c.channel <- c.messageBlock
+		c.internalChannel <- c.messageBlock
 		c.messageBlock = []canModels.CanMessage{}
 	}
 }
 
-func (c *InfluxDBClient) HandleChannel(channel chan canModels.CanMessage) {
-	c.l.Debug("starting channel handler")
-	for msg := range channel {
-		c.Handle(msg)
-	}
+func (c *InfluxDBClient) GetChannel() chan canModels.CanMessage {
+	return c.incomingChannel
 }
 
-func (c *InfluxDBClient) worker() {
-	c.l.Info("chunk worker started")
-	for msgChunk := range c.channel {
-		c.l.Info("chunk worker handling chunk")
+func (c *InfluxDBClient) HandleChannel() error {
+	c.l.Debug("starting channel handler")
+	for msg := range c.incomingChannel {
+		c.Handle(msg)
+	}
+	return nil
+}
+
+func (c *InfluxDBClient) GetName() string {
+	return "repo-influxdb3"
+}
+
+func (c *InfluxDBClient) worker(i int) {
+	c.l.Info(fmt.Sprintf("chunk worker %v started", i))
+	for msgChunk := range c.internalChannel {
+		c.l.Info(fmt.Sprintf("chunk worker %v handling chunk", i))
 		if err := c.write(c.convertMany(msgChunk)); err != nil {
 			panic(err)
 		} else {
@@ -83,6 +94,7 @@ func (c *InfluxDBClient) worker() {
 			c.workerLastRan = now
 			c.count += len(msgChunk)
 		}
+		c.l.Info(fmt.Sprintf("chunk worker %v finished handling chunk", i))
 	}
 }
 
@@ -94,9 +106,10 @@ func (c *InfluxDBClient) Run() error {
 		c.wg.Add(1)
 		go func(id int) {
 			defer func() { <-guard }()
-			c.worker()
+			go c.worker(i)
 		}(i)
 	}
+
 	c.wg.Wait()
 
 	return nil

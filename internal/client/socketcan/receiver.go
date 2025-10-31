@@ -18,8 +18,9 @@ func (scc *SocketCanConnectionClient) Receive(wg *sync.WaitGroup) {
 		for {
 			for scc.Receiver.Receive() {
 				frame := scc.Receiver.Frame()
+				now := time.Now().Unix()
 				scc.Channel <- canModels.CanMessage{
-					Timestamp: time.Now().Unix(),
+					Timestamp: now,
 					Interface: scc.GetInterfaceName(),
 					Transmit:  false,
 					ID:        frame.ID,

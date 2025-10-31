@@ -45,6 +45,16 @@ func (scc *BroadcastClient) Add(listener BroadcastClientListener) error {
 	return nil
 }
 
+func (scc *BroadcastClient) AddMany(listeners []BroadcastClientListener) error {
+	for _, listener := range listeners {
+		err := scc.Add(listener)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (scc *BroadcastClient) Remove(name string) error {
 	for i, c := range scc.broadcastChannels {
 		if c.Name == name {
@@ -60,12 +70,8 @@ func (scc *BroadcastClient) Broadcast() error {
 	for {
 		msg := <-scc.incomingChannel
 		scc.msgCount++
-		if scc.msgCount%100 == 0 {
-			fmt.Printf("COUNT %v\n", scc.msgCount)
-		}
 		for _, c := range scc.broadcastChannels {
 			c.Channel <- msg
 		}
 	}
-	return nil
 }

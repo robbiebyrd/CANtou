@@ -2,7 +2,6 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/caarlos0/env/v11"
 
@@ -27,7 +26,6 @@ func Load() (canModels.Config, string) {
 func ToJSON(config canModels.Config) (*string, error) {
 	jsonBytes, err := json.Marshal(config)
 	if err != nil {
-		fmt.Println("Error:", err)
 		return nil, err
 	}
 
