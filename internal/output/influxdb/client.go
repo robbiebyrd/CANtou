@@ -18,16 +18,17 @@ type InfluxDBClient struct {
 	client          *influxdb3.Client
 	ctx             context.Context
 	measurementName string
-	messageBlock    []canModels.CanMessage
+	messageBlock    []canModels.CanMessageTimestamped
 	wg              sync.WaitGroup
 	maxBlocks       int
 	maxConnections  int
-	internalChannel chan []canModels.CanMessage
+	internalChannel chan []canModels.CanMessageTimestamped
 	flushTime       int // ms
 	l               *slog.Logger
 	workerLastRan   time.Time
 	count           int
-	incomingChannel chan canModels.CanMessage
+	incomingChannel chan canModels.CanMessageTimestamped
+	filters         map[string]canModels.FilterInterface
 }
 
 func NewClient(ctx *context.Context, cfg canModels.Config, logger *slog.Logger) canModels.OutputClient {
@@ -53,21 +54,36 @@ func NewClient(ctx *context.Context, cfg canModels.Config, logger *slog.Logger) 
 		maxBlocks:       cfg.InfluxDB.MaxWriteLines,
 		maxConnections:  cfg.InfluxDB.MaxConnections,
 		flushTime:       cfg.InfluxDB.FlushTime,
-		internalChannel: make(chan []canModels.CanMessage),
-		incomingChannel: make(chan canModels.CanMessage, cfg.MessageBufferSize),
+		internalChannel: make(chan []canModels.CanMessageTimestamped),
+		incomingChannel: make(chan canModels.CanMessageTimestamped, cfg.MessageBufferSize),
 		wg:              sync.WaitGroup{},
+		filters:         make(map[string]canModels.FilterInterface),
 	}
 }
 
-func (c *InfluxDBClient) Handle(canMsg canModels.CanMessage) {
+func (c *InfluxDBClient) Handle(canMsg canModels.CanMessageTimestamped) {
+	if shouldFilter, filterName := c.shouldFilterMessage(canMsg); shouldFilter {
+		c.l.Debug("message filtered, dropping message", "message", canMsg, "filterName", *filterName)
+		return
+	}
+
 	c.messageBlock = append(c.messageBlock, canMsg)
-	if len(c.messageBlock) >= c.maxBlocks {
+	if len(c.messageBlock) >= c.maxBlocks || time.Since(c.workerLastRan) >= time.Duration(c.flushTime)*time.Millisecond {
 		c.internalChannel <- c.messageBlock
-		c.messageBlock = []canModels.CanMessage{}
+		c.messageBlock = []canModels.CanMessageTimestamped{}
 	}
 }
 
-func (c *InfluxDBClient) GetChannel() chan canModels.CanMessage {
+func (c *InfluxDBClient) AddFilter(name string, filter canModels.FilterInterface) error {
+	if _, ok := c.filters[name]; ok {
+		return fmt.Errorf("filter group already exists: %v", name)
+	}
+	c.l.Debug("creating new filter group", "filterName", name)
+	c.filters[name] = filter
+	return nil
+}
+
+func (c *InfluxDBClient) GetChannel() chan canModels.CanMessageTimestamped {
 	return c.incomingChannel
 }
 
@@ -84,9 +100,9 @@ func (c *InfluxDBClient) GetName() string {
 }
 
 func (c *InfluxDBClient) worker(i int) {
-	c.l.Info(fmt.Sprintf("chunk worker %v started", i))
+	c.l.Debug(fmt.Sprintf("influxdb3 chunk worker %v started", i))
 	for msgChunk := range c.internalChannel {
-		c.l.Info(fmt.Sprintf("chunk worker %v handling chunk", i))
+		c.l.Debug(fmt.Sprintf("influxdb3 chunk worker %v handling chunk", i))
 		if err := c.write(c.convertMany(msgChunk)); err != nil {
 			panic(err)
 		} else {
@@ -94,7 +110,7 @@ func (c *InfluxDBClient) worker(i int) {
 			c.workerLastRan = now
 			c.count += len(msgChunk)
 		}
-		c.l.Info(fmt.Sprintf("chunk worker %v finished handling chunk", i))
+		c.l.Debug(fmt.Sprintf("influxdb3 chunk worker %v finished handling chunk", i))
 	}
 }
 
@@ -110,12 +126,10 @@ func (c *InfluxDBClient) Run() error {
 		}(i)
 	}
 
-	c.wg.Wait()
-
 	return nil
 }
 
-func (c *InfluxDBClient) convertMsg(msg canModels.CanMessage) InfluxDBCanMessage {
+func (c *InfluxDBClient) convertMsg(msg canModels.CanMessageTimestamped) InfluxDBCanMessage {
 	newMsgData := make([]string, len(msg.Data))
 	for i, b := range msg.Data {
 		newMsgData[i] = strconv.Itoa(int(b - '0'))
@@ -135,7 +149,7 @@ func (c *InfluxDBClient) convertMsg(msg canModels.CanMessage) InfluxDBCanMessage
 	return msgConverted
 }
 
-func (c *InfluxDBClient) convertMany(msgs []canModels.CanMessage) []InfluxDBCanMessage {
+func (c *InfluxDBClient) convertMany(msgs []canModels.CanMessageTimestamped) []InfluxDBCanMessage {
 	var convertedMessages []InfluxDBCanMessage
 	for _, m := range msgs {
 		convertedMessages = append(convertedMessages, c.convertMsg(m))
@@ -162,4 +176,13 @@ func boolToInt(b bool) uint8 {
 		return 1
 	}
 	return 0
+}
+
+func (c *InfluxDBClient) shouldFilterMessage(canMsg canModels.CanMessageTimestamped) (bool, *string) {
+	for name, filter := range c.filters {
+		if filter.Filter(canMsg) {
+			return true, &name
+		}
+	}
+	return false, nil
 }

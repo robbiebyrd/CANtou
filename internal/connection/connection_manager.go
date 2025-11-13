@@ -13,12 +13,13 @@ import (
 type CanConnectionManager struct {
 	ctx            *context.Context
 	connections    []canModels.CanConnection
-	MessageChannel chan canModels.CanMessage
+	MessageChannel chan canModels.CanMessageTimestamped
 	wg             *sync.WaitGroup
 	l              *slog.Logger
+	cfg            canModels.Config
 }
 
-func NewConnectionManager(ctx *context.Context, msgChan chan canModels.CanMessage, logger *slog.Logger) canModels.ConnectionManager {
+func NewConnectionManager(ctx *context.Context, cfg canModels.Config, msgChan chan canModels.CanMessageTimestamped, logger *slog.Logger) canModels.ConnectionManager {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	return &CanConnectionManager{
@@ -26,6 +27,7 @@ func NewConnectionManager(ctx *context.Context, msgChan chan canModels.CanMessag
 		MessageChannel: msgChan,
 		wg:             &wg,
 		l:              logger,
+		cfg:            cfg,
 	}
 }
 
@@ -52,9 +54,9 @@ func (cm *CanConnectionManager) Add(conn canModels.CanConnection) {
 func (cm *CanConnectionManager) Connect(options canModels.CanInterfaceOption) {
 	switch options.Network {
 	case "sim":
-		cm.Add(simulate.NewSimulationCanClient(cm.ctx, options.Name, cm.MessageChannel, cm.l, &options.Network, &options.URI, nil))
+		cm.Add(simulate.NewSimulationCanClient(cm.ctx, cm.cfg, options.Name, cm.MessageChannel, cm.l, &options.Network, &options.URI, nil))
 	default:
-		cm.Add(socketcan.NewSocketCanConnection(cm.ctx, options.Name, cm.MessageChannel, &options.Network, &options.URI))
+		cm.Add(socketcan.NewSocketCanConnection(cm.ctx, cm.cfg, options.Name, cm.MessageChannel, &options.Network, &options.URI))
 	}
 }
 

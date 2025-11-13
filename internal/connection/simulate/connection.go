@@ -2,12 +2,16 @@ package simulate
 
 import (
 	"context"
+	cryptoRand "crypto/rand"
 	"fmt"
 	"log/slog"
+	mathRand "math/rand"
 	"net"
+	"sync"
+	"time"
 
-	"github.com/robbiebyrd/bb/internal/config"
-	canModel "github.com/robbiebyrd/bb/internal/models"
+	commonUtils "github.com/robbiebyrd/bb/internal/client/common"
+	canModels "github.com/robbiebyrd/bb/internal/models"
 )
 
 type SimulationCanClient struct {
@@ -15,19 +19,20 @@ type SimulationCanClient struct {
 	Name       string
 	Network    string
 	URI        string
-	Channel    chan canModel.CanMessage
+	Channel    chan canModels.CanMessageTimestamped
 	Connection net.Conn
-	Receiver   canModel.ReceiverInterface
+	Receiver   canModels.ReceiverInterface
 	Opened     bool
 	Streaming  bool
 	l          *slog.Logger
 	rate       int //ms
 	count      int
+	cfg        canModels.Config
 }
 
-func NewSimulationCanClient(ctx *context.Context, name string, channel chan canModel.CanMessage, logger *slog.Logger, network, uri *string, rate *int) *SimulationCanClient {
-	cfg, _ := config.Load()
+var CAN_MESSAGE_MAX_DATA_LENGTH uint8 = 8 // bytes
 
+func NewSimulationCanClient(ctx *context.Context, cfg canModels.Config, name string, channel chan canModels.CanMessageTimestamped, logger *slog.Logger, network, uri *string, rate *int) *SimulationCanClient {
 	if name == "" {
 		panic(fmt.Errorf("connection name cannot be empty"))
 	} else if channel == nil {
@@ -55,6 +60,7 @@ func NewSimulationCanClient(ctx *context.Context, name string, channel chan canM
 		URI:     *uri,
 		l:       logger,
 		rate:    *rate,
+		cfg:     cfg,
 	}
 }
 
@@ -71,7 +77,7 @@ func (scc *SimulationCanClient) GetNetwork() string {
 }
 
 func (scc *SimulationCanClient) GetInterfaceName() string {
-	return scc.GetName() + ":>" + scc.GetNetwork() + ":>" + scc.GetURI()
+	return scc.GetName() + scc.cfg.CanInterfaceSeparator + scc.GetNetwork() + scc.cfg.CanInterfaceSeparator + scc.GetURI()
 }
 
 func (scc *SimulationCanClient) SetNetwork(network string) {
@@ -111,4 +117,38 @@ func (scc *SimulationCanClient) IsOpen() bool {
 func (scc *SimulationCanClient) Discontinue() error {
 	scc.Streaming = false
 	return nil
+}
+
+func (scc *SimulationCanClient) Receive(wg *sync.WaitGroup) {
+	scc.Streaming = true
+
+	wg.Go(func() {
+		for {
+
+			// Create a slice of random bytes
+			randomBytes := make([]byte, CAN_MESSAGE_MAX_DATA_LENGTH)
+
+			// Read random bytes into the slice
+			cryptoRand.Read(randomBytes)
+
+			// Select a random length for the data packet.
+			lengthOfDataPacket := []uint8{CAN_MESSAGE_MAX_DATA_LENGTH / 4, CAN_MESSAGE_MAX_DATA_LENGTH / 2, CAN_MESSAGE_MAX_DATA_LENGTH}
+			randomLength := lengthOfDataPacket[mathRand.Intn(len(lengthOfDataPacket))]
+
+			scc.Channel <- canModels.CanMessageTimestamped{
+				Timestamp: time.Now().Unix(),
+				Interface: scc.GetInterfaceName(),
+				Transmit:  false,
+				ID:        uint32(mathRand.Intn(255)),
+				Remote:    false,
+				Length:    randomLength,
+				Data:      commonUtils.PadOrTrim(randomBytes[:randomLength], int(CAN_MESSAGE_MAX_DATA_LENGTH)),
+			}
+
+			scc.count++
+			scc.l.Debug(fmt.Sprintf("emitted simulated can message #%v", scc.count))
+
+			time.Sleep(time.Duration(scc.rate) * time.Microsecond)
+		}
+	})
 }

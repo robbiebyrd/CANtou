@@ -1,14 +1,34 @@
 package mqtt
 
-import "time"
+import (
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
 
-type InfluxDBCanMessage struct {
-	Timestamp   time.Time `lp:"timestamp"`
-	Interface   string    `lp:"tag,interface"`
-	Transmit    uint8     `lp:"field,transmit"`
-	ID          string    `lp:"tag,can_id"`
-	Length      uint8     `lp:"field,length"`
-	Remote      uint8     `lp:"field,remote"`
-	Data        string    `lp:"tag,data"`
-	Measurement string    `lp:"measurement"`
+	canModels "github.com/robbiebyrd/bb/internal/models"
+)
+
+func (c *MQTTClient) ToJSON(canMsg canModels.CanMessageTimestamped) string {
+
+	a := struct {
+		Timestamp int64  `json:"timestamp"`
+		Interface string `json:"interface"`
+		ID        string `json:"id"`
+		Transmit  bool   `json:"transmit"`
+		Remote    bool   `json:"remote"`
+		Length    uint8  `json:"length"`
+		Data      string `json:"data"`
+	}{
+		Timestamp: canMsg.Timestamp,
+		Interface: canMsg.Interface,
+		ID:        "0x" + fmt.Sprintf("%x", canMsg.ID),
+		Transmit:  canMsg.Transmit,
+		Remote:    canMsg.Remote,
+		Length:    canMsg.Length,
+		Data:      hex.EncodeToString(canMsg.Data),
+	}
+
+	jsonBytes, _ := json.Marshal(a)
+
+	return string(jsonBytes)
 }

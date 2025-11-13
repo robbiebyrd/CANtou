@@ -11,9 +11,13 @@ type InfluxDBConfig struct {
 }
 
 type MQTTConfig struct {
-	Host     string `env:"HOST,required"`
-	ClientId string `env:"CLIENTID,required"`
-	Topic    string `env:"TOPIC" envDefault:"can_data"`
+	Host          string `env:"HOST,required"`
+	ClientId      string `env:"CLIENTID,required"`
+	Topic         string `env:"TOPIC" envDefault:"can_data"`
+	Qos           uint8  `env:"QOS" envDefault:"0"`
+	ShadowCopy    bool   `env:"SHADOW_COPY" envDefault:"false"`
+	Dedupe        bool   `env:"DEDUPE" envDefault:"true"`
+	DedupeTimeout int    `env:"DEDUPE_TIMEOUT_MS" envDefault:"1000"`
 }
 
 type CSVLogConfig struct {
@@ -22,11 +26,12 @@ type CSVLogConfig struct {
 }
 
 type Config struct {
-	CanInterfaces     []CanInterfaceOption `envPrefix:"INTERFACE"`
-	MessageBufferSize int                  `env:"MSG_BUFFER_SIZE" envDefault:"81920"`
-	InfluxDB          InfluxDBConfig       `envPrefix:"INFLUX_"`
-	CSVLog            CSVLogConfig         `envPrefix:"CSV_"`
-	MQTTConfig        MQTTConfig           `envPrefix:"MQTT_"`
-	SimEmitRate       int                  `env:"SIM_RATE" envDefault:"10"`
-	LogLevel          string               `env:"LOG_LEVEL" envDefault:"info"`
+	CanInterfaces         []CanInterfaceOption `envPrefix:"INTERFACE"`
+	MessageBufferSize     int                  `env:"MSG_BUFFER_SIZE" envDefault:"81920"`
+	InfluxDB              InfluxDBConfig       `envPrefix:"INFLUX_"`
+	CSVLog                CSVLogConfig         `envPrefix:"CSV_"`
+	MQTTConfig            MQTTConfig           `envPrefix:"MQTT_"`
+	SimEmitRate           int                  `env:"SIM_RATE" envDefault:"10"`
+	LogLevel              string               `env:"LOG_LEVEL" envDefault:"info"`
+	CanInterfaceSeparator string               `env:"CAN_INTERFACE_SEPARATOR" envDefault:"-"`
 }

@@ -2,18 +2,26 @@ package config
 
 import (
 	"encoding/json"
+	"log/slog"
 
 	"github.com/caarlos0/env/v11"
 
 	canModels "github.com/robbiebyrd/bb/internal/models"
 )
 
-func Load() (canModels.Config, string) {
+func Load(logger *slog.Logger) (canModels.Config, string) {
 	cfg, err := env.ParseAs[canModels.Config]()
 	if err != nil {
 		panic(err)
 	} else if len(cfg.CanInterfaces) == 0 {
-		panic("no CAN interfaces configured")
+		logger.Warn("no can interfaces defined in env, defaulting to single simulation interface")
+		cfg.CanInterfaces = []canModels.CanInterfaceOption{
+			{
+				Name:    "simulation",
+				URI:     "can0",
+				Network: "sim",
+			},
+		}
 	}
 	cfgJson, err := ToJSON(cfg)
 	if err != nil || cfgJson == nil {

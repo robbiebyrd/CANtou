@@ -5,20 +5,10 @@ import (
 	"os"
 )
 
-func NewJSONLogger(logLevel string) *slog.Logger {
-	logLevelTranslated := slog.LevelInfo
-	switch logLevel {
-	case "debug", "DEBUG":
-		logLevelTranslated = slog.LevelDebug
-	case "error", "ERROR":
-		logLevelTranslated = slog.LevelError
-	case "warn", "WARN":
-		logLevelTranslated = slog.LevelWarn
-	}
-
+func NewJSONLogger(logLevel *slog.LevelVar) *slog.Logger {
 	return slog.New(
 		slog.NewJSONHandler(
-			os.Stdout, &slog.HandlerOptions{Level: logLevelTranslated},
+			os.Stdout, &slog.HandlerOptions{Level: logLevel},
 		),
 	)
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/robbiebyrd/bb/internal/app"
+	"github.com/robbiebyrd/bb/internal/client/dedupe"
 	canModels "github.com/robbiebyrd/bb/internal/models"
 	"github.com/robbiebyrd/bb/internal/output/csv"
 	"github.com/robbiebyrd/bb/internal/output/influxdb"
@@ -9,12 +10,16 @@ import (
 )
 
 func main() {
-	b := app.NewBerthaApp()
+	b := app.NewApp()
+	ctx, cfg, log := b.GetContext(), b.GetConfig(), b.GetLogger()
 
 	b.AddOutputs([]canModels.OutputClient{
-		csv.NewClient(&b.Ctx, b.Cfg, b.Log),
-		influxdb.NewClient(&b.Ctx, b.Cfg, b.Log),
-		mqtt.NewClient(&b.Ctx, b.Cfg, b.Log),
+		csv.NewClient(ctx, cfg, log),
+		influxdb.NewClient(ctx, cfg, log),
+		mqtt.NewClient(ctx, cfg, log, canModels.FilterInput{
+			Name:   "deduper",
+			Filter: dedupe.NewDedupeFilterClient(log, cfg.MQTTConfig.DedupeTimeout),
+		}),
 	})
 
 	b.Run()

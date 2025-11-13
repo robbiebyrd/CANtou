@@ -8,7 +8,7 @@ import (
 	"go.einride.tech/can"
 	goSocketCan "go.einride.tech/can/pkg/socketcan"
 
-	canModel "github.com/robbiebyrd/bb/internal/models"
+	canModels "github.com/robbiebyrd/bb/internal/models"
 )
 
 type ReceiverInterface interface {
@@ -23,14 +23,15 @@ type SocketCanConnectionClient struct {
 	name       string
 	network    string
 	uri        string
-	channel    chan canModel.CanMessage
+	channel    chan canModels.CanMessageTimestamped
 	connection net.Conn
 	receiver   ReceiverInterface
 	opened     bool
 	streaming  bool
+	cfg        canModels.Config
 }
 
-func NewSocketCanConnection(ctx *context.Context, name string, channel chan canModel.CanMessage, network, uri *string) *SocketCanConnectionClient {
+func NewSocketCanConnection(ctx *context.Context, cfg canModels.Config, name string, channel chan canModels.CanMessageTimestamped, network, uri *string) *SocketCanConnectionClient {
 	if name == "" {
 		panic(fmt.Errorf("connection name cannot be empty"))
 	} else if channel == nil {
@@ -52,6 +53,7 @@ func NewSocketCanConnection(ctx *context.Context, name string, channel chan canM
 		channel: channel,
 		network: *network,
 		uri:     *uri,
+		cfg:     cfg,
 	}
 }
 
@@ -80,7 +82,7 @@ func (scc *SocketCanConnectionClient) SetName(name string) {
 }
 
 func (scc *SocketCanConnectionClient) GetInterfaceName() string {
-	return scc.GetName() + ":>" + scc.GetNetwork() + ":>" + scc.GetURI()
+	return scc.GetName() + scc.cfg.CanInterfaceSeparator + scc.GetNetwork() + scc.cfg.CanInterfaceSeparator + scc.GetURI()
 }
 
 func (scc *SocketCanConnectionClient) GetConnection() net.Conn {

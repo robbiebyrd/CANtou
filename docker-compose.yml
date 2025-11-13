@@ -38,3 +38,5 @@ services:
       - "9001:9001"
     volumes:
       - ./config/mosquitto:/mosquitto/config
+      - ./data/mosquitto/data:/mosquitto/data
+      - ./data/mosquitto/log:/mosquitto/log

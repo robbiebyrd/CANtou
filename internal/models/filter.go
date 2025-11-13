@@ -54,5 +54,16 @@ type CanMessageFilterGroup struct {
 }
 
 type CanMessageFilter interface {
-	Filter(canMsg CanMessage) bool
+	Filter(canMsg CanMessageTimestamped) bool
+}
+
+type FilterInterface interface {
+	Add(filter CanMessageFilter) error
+	Filter(canMsg CanMessageTimestamped) bool
+	Mode(mode CanFilterGroupOperator)
+}
+
+type FilterInput struct {
+	Name   string
+	Filter FilterInterface
 }

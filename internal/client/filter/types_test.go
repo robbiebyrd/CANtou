@@ -5,13 +5,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	canModel "github.com/robbiebyrd/bb/internal/models"
+	canModels "github.com/robbiebyrd/bb/internal/models"
 )
 
 func TestCanInterfaceFilter(t *testing.T) {
-	testMessage1 := canModel.CanMessage{
+	testMessage1 := canModels.CanMessageTimestamped{
 		Timestamp: 0,
-		Interface: "can0:>",
+		Interface: "can0=",
 		Transmit:  false,
 		ID:        123,
 		Length:    8,
@@ -19,12 +19,12 @@ func TestCanInterfaceFilter(t *testing.T) {
 		Data:      []byte{},
 	}
 
-	testFilter1 := CanInterfaceFilter{Value: "can0", Operator: canModel.TextContains}
+	testFilter1 := CanInterfaceFilter{Value: "can0", Operator: canModels.TextContains}
 	assert.Equal(t, true, testFilter1.Filter(testMessage1), "Should be true.")
 
-	testMessage2 := canModel.CanMessage{
+	testMessage2 := canModels.CanMessageTimestamped{
 		Timestamp: 0,
-		Interface: "can1:>",
+		Interface: "can1=",
 		Transmit:  false,
 		ID:        123,
 		Length:    8,
@@ -32,12 +32,12 @@ func TestCanInterfaceFilter(t *testing.T) {
 		Data:      []byte{},
 	}
 
-	testFilter2 := CanInterfaceFilter{Value: "can0", Operator: canModel.TextContains}
+	testFilter2 := CanInterfaceFilter{Value: "can0", Operator: canModels.TextContains}
 	assert.Equal(t, false, testFilter2.Filter(testMessage2), "Should be false.")
 
-	testMessage3 := canModel.CanMessage{
+	testMessage3 := canModels.CanMessageTimestamped{
 		Timestamp: 0,
-		Interface: "can0:>",
+		Interface: "can0=",
 		Transmit:  false,
 		ID:        123,
 		Length:    8,
@@ -45,12 +45,12 @@ func TestCanInterfaceFilter(t *testing.T) {
 		Data:      []byte{},
 	}
 
-	testFilter3 := CanInterfaceFilter{Value: "can0:>", Operator: canModel.TextEquals}
+	testFilter3 := CanInterfaceFilter{Value: "can0=", Operator: canModels.TextEquals}
 	assert.Equal(t, true, testFilter3.Filter(testMessage3), "Should be true.")
 
-	testMessage4 := canModel.CanMessage{
+	testMessage4 := canModels.CanMessageTimestamped{
 		Timestamp: 0,
-		Interface: "can1:>",
+		Interface: "can1=",
 		Transmit:  false,
 		ID:        123,
 		Length:    8,
@@ -58,6 +58,6 @@ func TestCanInterfaceFilter(t *testing.T) {
 		Data:      []byte{},
 	}
 
-	testFilter4 := CanInterfaceFilter{Value: "can0", Operator: canModel.TextEquals}
+	testFilter4 := CanInterfaceFilter{Value: "can0", Operator: canModels.TextEquals}
 	assert.Equal(t, false, testFilter4.Filter(testMessage4), "Should be false.")
 }

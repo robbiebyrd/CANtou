@@ -4,45 +4,41 @@ import (
 	"context"
 
 	"github.com/robbiebyrd/bb/internal/client/common"
-	canModel "github.com/robbiebyrd/bb/internal/models"
+	canModels "github.com/robbiebyrd/bb/internal/models"
 )
 
-type FilterInterface interface {
-	Add(filter canModel.CanMessageFilter) error
-	Filter(canMsg canModel.CanMessage) bool
-	Mode(mode canModel.CanFilterGroupOperator)
-}
-
 type FilterClient struct {
-	ctx    *context.Context
-	filter canModel.CanMessageFilterGroup
+	ctx     *context.Context
+	filter  canModels.CanMessageFilterGroup
+	enabled bool
 }
 
-func NewFilterClient(ctx *context.Context) *FilterClient {
+func NewFilterClient(ctx *context.Context) canModels.FilterInterface {
 	return &FilterClient{
-		ctx:    ctx,
-		filter: canModel.CanMessageFilterGroup{},
+		ctx:     ctx,
+		filter:  canModels.CanMessageFilterGroup{},
+		enabled: true,
 	}
 }
 
-func (fc *FilterClient) Filter(canMsg canModel.CanMessage) bool {
+func (fc *FilterClient) Filter(canMsg canModels.CanMessageTimestamped) bool {
 	filterResults := []bool{}
 	for _, f := range fc.filter.Filters {
 		filterResults = append(filterResults, f.Filter(canMsg))
 	}
 	switch fc.filter.Operator {
-	case canModel.FilterOr:
+	case canModels.FilterOr:
 		return common.ArrayContainsTrue(filterResults)
 	default:
 		return common.ArrayContainsFalse(filterResults)
 	}
 }
 
-func (fc *FilterClient) Mode(mode canModel.CanFilterGroupOperator) {
+func (fc *FilterClient) Mode(mode canModels.CanFilterGroupOperator) {
 	fc.filter.Operator = mode
 }
 
-func (fc *FilterClient) Add(filter canModel.CanMessageFilter) error {
+func (fc *FilterClient) Add(filter canModels.CanMessageFilter) error {
 	fc.filter.Filters = append(fc.filter.Filters, filter)
 	return nil
 }
