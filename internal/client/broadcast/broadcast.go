@@ -6,7 +6,7 @@ import (
 	"slices"
 
 	"github.com/robbiebyrd/bb/internal/client/common"
-	canModel "github.com/robbiebyrd/bb/internal/models"
+	canModels "github.com/robbiebyrd/bb/internal/models"
 )
 
 type BroadcastInterface interface {
@@ -17,18 +17,18 @@ type BroadcastInterface interface {
 
 type BroadcastClientListener struct {
 	Name    string
-	Channel chan canModel.CanMessage
-	Filter  *canModel.CanMessageFilterGroup
+	Channel chan canModels.CanMessageTimestamped
+	Filter  *canModels.CanMessageFilterGroup
 }
 
 type BroadcastClient struct {
 	ctx               *context.Context
 	broadcastChannels []BroadcastClientListener
-	incomingChannel   chan canModel.CanMessage
+	incomingChannel   chan canModels.CanMessageTimestamped
 	msgCount          int
 }
 
-func NewBroadcastClient(ctx *context.Context, incomingChannel chan canModel.CanMessage) *BroadcastClient {
+func NewBroadcastClient(ctx *context.Context, incomingChannel chan canModels.CanMessageTimestamped) *BroadcastClient {
 	return &BroadcastClient{
 		ctx:             ctx,
 		incomingChannel: incomingChannel,
@@ -91,7 +91,7 @@ func (scc *BroadcastClient) Broadcast() error {
 	}
 }
 
-func (scc *BroadcastClient) testFilterGroup(c BroadcastClientListener, canMsg canModel.CanMessage) bool {
+func (scc *BroadcastClient) testFilterGroup(c BroadcastClientListener, canMsg canModels.CanMessageTimestamped) bool {
 	filterValues := []bool{}
 
 	for _, f := range c.Filter.Filters {
@@ -99,7 +99,7 @@ func (scc *BroadcastClient) testFilterGroup(c BroadcastClientListener, canMsg ca
 	}
 
 	switch c.Filter.Operator {
-	case canModel.FilterOr:
+	case canModels.FilterOr:
 		return common.ArrayContainsTrue(filterValues)
 	default:
 		return common.ArrayAllTrue(filterValues)

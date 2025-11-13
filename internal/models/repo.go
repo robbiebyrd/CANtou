@@ -2,8 +2,9 @@ package models
 
 type OutputClient interface {
 	Run() error
-	Handle(canMsg CanMessage)
+	Handle(canMsg CanMessageTimestamped)
 	HandleChannel() error
-	GetChannel() chan CanMessage
+	GetChannel() chan CanMessageTimestamped
 	GetName() string
+	AddFilter(name string, filter FilterInterface) error
 }

@@ -5,8 +5,17 @@ import (
 	"sync"
 )
 
-type CanMessage struct {
+type CanMessageTimestamped struct {
 	Timestamp int64
+	Interface string
+	ID        uint32
+	Transmit  bool
+	Remote    bool
+	Length    uint8
+	Data      []byte
+}
+
+type CanMessageData struct {
 	Interface string
 	ID        uint32
 	Transmit  bool
