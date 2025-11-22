@@ -68,6 +68,7 @@ func (c *InfluxDBClient) Handle(canMsg canModels.CanMessageTimestamped) {
 	}
 
 	c.messageBlock = append(c.messageBlock, canMsg)
+	c.l.Warn(fmt.Sprintf("current count %v", len(c.messageBlock)))
 	if len(c.messageBlock) >= c.maxBlocks || time.Since(c.workerLastRan) >= time.Duration(c.flushTime)*time.Millisecond {
 		c.internalChannel <- c.messageBlock
 		c.messageBlock = []canModels.CanMessageTimestamped{}
@@ -122,7 +123,7 @@ func (c *InfluxDBClient) Run() error {
 		c.wg.Add(1)
 		go func(id int) {
 			defer func() { <-guard }()
-			go c.worker(i)
+			c.worker(i)
 		}(i)
 	}
 
@@ -130,16 +131,16 @@ func (c *InfluxDBClient) Run() error {
 }
 
 func (c *InfluxDBClient) convertMsg(msg canModels.CanMessageTimestamped) InfluxDBCanMessage {
-	newMsgData := make([]string, len(msg.Data))
-	for i, b := range msg.Data {
-		newMsgData[i] = strconv.Itoa(int(b - '0'))
+	newMsgData := make([]string, msg.Length)
+	for i := 0; i < int(msg.Length); i++ {
+		newMsgData[i] = strconv.Itoa(int(msg.Data[i]))
 	}
 
 	msgConverted := InfluxDBCanMessage{
 		Timestamp:   time.Unix(msg.Timestamp, 0),
-		ID:          fmt.Sprintf("0x%x", msg.ID),
+		ID:          fmt.Sprintf("%03x", msg.ID),
 		Length:      msg.Length,
-		Data:        fmt.Sprintf("[%v]", strings.Join(newMsgData, ",")),
+		Data:        strings.Join(newMsgData, ","),
 		Remote:      boolToInt(msg.Remote),
 		Transmit:    boolToInt(msg.Transmit),
 		Interface:   msg.Interface,
@@ -163,10 +164,7 @@ func (c *InfluxDBClient) write(msg []InfluxDBCanMessage) error {
 		data[i] = m
 	}
 
-	err := c.client.WriteData(c.ctx, data)
-	if err != nil {
-		return err
-	}
+	go c.client.WriteData(c.ctx, data)
 
 	return nil
 }

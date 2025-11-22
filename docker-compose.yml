@@ -40,3 +40,10 @@ services:
       - ./config/mosquitto:/mosquitto/config
       - ./data/mosquitto/data:/mosquitto/data
       - ./data/mosquitto/log:/mosquitto/log
+
+  influxdb3-ui:
+    container_name: influxdb3-explorer
+    ports:
+      - 8888:80
+    image: influxdata/influxdb3-ui:1.4.0
+
