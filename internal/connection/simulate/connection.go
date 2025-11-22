@@ -139,7 +139,7 @@ func (scc *SimulationCanClient) Receive(wg *sync.WaitGroup) {
 				Timestamp: time.Now().Unix(),
 				Interface: scc.GetInterfaceName(),
 				Transmit:  false,
-				ID:        uint32(mathRand.Intn(255)),
+				ID:        uint32(mathRand.Intn(2047)),
 				Remote:    false,
 				Length:    randomLength,
 				Data:      commonUtils.PadOrTrim(randomBytes[:randomLength], int(CAN_MESSAGE_MAX_DATA_LENGTH)),
@@ -148,7 +148,7 @@ func (scc *SimulationCanClient) Receive(wg *sync.WaitGroup) {
 			scc.count++
 			scc.l.Debug(fmt.Sprintf("emitted simulated can message #%v", scc.count))
 
-			time.Sleep(time.Duration(scc.rate) * time.Microsecond)
+			time.Sleep(time.Duration(scc.rate) * time.Millisecond)
 		}
 	})
 }

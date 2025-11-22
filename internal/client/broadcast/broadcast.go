@@ -36,15 +36,6 @@ func NewBroadcastClient(ctx *context.Context, incomingChannel chan canModels.Can
 	}
 }
 
-func (scc *BroadcastClient) listenerExists(listener BroadcastClientListener) bool {
-	for _, c := range scc.broadcastChannels {
-		if c.Name == listener.Name {
-			return true
-		}
-	}
-	return false
-}
-
 func (scc *BroadcastClient) Add(listener BroadcastClientListener) error {
 	if scc.listenerExists(listener) {
 		return fmt.Errorf("the name %v is already in use", listener.Name)
@@ -104,4 +95,13 @@ func (scc *BroadcastClient) testFilterGroup(c BroadcastClientListener, canMsg ca
 	default:
 		return common.ArrayAllTrue(filterValues)
 	}
+}
+
+func (scc *BroadcastClient) listenerExists(listener BroadcastClientListener) bool {
+	for _, c := range scc.broadcastChannels {
+		if c.Name == listener.Name {
+			return true
+		}
+	}
+	return false
 }
