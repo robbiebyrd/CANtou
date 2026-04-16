@@ -26,12 +26,12 @@ type MQTTConfig struct {
 }
 
 type CSVLogConfig struct {
-	OutputFile     string `env:"OUTPUT_FILE,required"`
-	IncludeHeaders bool   `env:"OUTPUT_HEADERS"       envDefault:"true"`
+	OutputFile     string `env:"OUTPUT_FILE"    envDefault:""`
+	IncludeHeaders bool   `env:"OUTPUT_HEADERS" envDefault:"true"`
 }
 
 type CRTDLogConfig struct {
-	OutputFile string `env:"OUTPUT_FILE,required"`
+	OutputFile string `env:"OUTPUT_FILE" envDefault:""`
 }
 
 type Config struct {
