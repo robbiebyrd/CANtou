@@ -17,12 +17,19 @@ func main() {
 	ctx, cfg, log := b.GetContext(), b.GetConfig(), b.GetLogger()
 	connections := b.GetConnections()
 
-	crtdClient := crtd.NewClient(ctx, cfg, log)
+	var outputs []canModels.OutputClient
 
-	csvClient, err := csv.NewClient(ctx, cfg, log, connections)
-	if err != nil {
-		log.Error("failed to create CSV client", "error", err)
-		os.Exit(1)
+	if cfg.CRTDLogger.OutputFile != "" {
+		outputs = append(outputs, crtd.NewClient(ctx, cfg, log))
+	}
+
+	if cfg.CSVLog.OutputFile != "" {
+		csvClient, err := csv.NewClient(ctx, cfg, log, connections)
+		if err != nil {
+			log.Error("failed to create CSV client", "error", err)
+			os.Exit(1)
+		}
+		outputs = append(outputs, csvClient)
 	}
 
 	influxClient, err := influxdb.NewClient(ctx, cfg, log, connections)
@@ -30,6 +37,7 @@ func main() {
 		log.Error("failed to create InfluxDB client", "error", err)
 		os.Exit(1)
 	}
+	outputs = append(outputs, influxClient)
 
 	var mqttFilters []canModels.FilterInput
 	if cfg.MQTTConfig.Dedupe {
@@ -43,8 +51,9 @@ func main() {
 		log.Error("failed to create MQTT client", "error", err)
 		os.Exit(1)
 	}
+	outputs = append(outputs, mqttClient)
 
-	b.AddOutputs([]canModels.OutputClient{crtdClient, csvClient, influxClient, mqttClient})
+	b.AddOutputs(outputs)
 
 	if err := b.Run(); err != nil {
 		log.Error("application error", "error", err)
