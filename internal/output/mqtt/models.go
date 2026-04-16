@@ -8,7 +8,7 @@ import (
 	canModels "github.com/robbiebyrd/bb/internal/models"
 )
 
-func (c *MQTTClient) ToJSON(canMsg canModels.CanMessageTimestamped) string {
+func (c *MQTTClient) ToJSON(canMsg canModels.CanMessageTimestamped) (string, error) {
 
 	a := struct {
 		Timestamp int64  `json:"timestamp"`
@@ -28,7 +28,10 @@ func (c *MQTTClient) ToJSON(canMsg canModels.CanMessageTimestamped) string {
 		Data:      hex.EncodeToString(canMsg.Data),
 	}
 
-	jsonBytes, _ := json.Marshal(a)
+	jsonBytes, err := json.Marshal(a)
+	if err != nil {
+		return "", err
+	}
 
-	return string(jsonBytes)
+	return string(jsonBytes), nil
 }

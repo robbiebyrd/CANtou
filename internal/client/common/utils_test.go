@@ -50,10 +50,3 @@ func TestArrayAllTrue(t *testing.T) {
 	assert.Equal(t, false, oneFalse, "Should be true.")
 }
 
-func TestArrayAllFalse(t *testing.T) {
-	allFalse := ArrayAllFalse([]bool{false, false, false})
-	assert.Equal(t, true, allFalse, "Should be true.")
-
-	oneTrue := ArrayAllFalse([]bool{false, true, false})
-	assert.Equal(t, false, oneTrue, "Should be true.")
-}

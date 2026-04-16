@@ -3,6 +3,7 @@ package dedupe
 import (
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -26,8 +27,9 @@ func TestCanInterfaceFilter(t *testing.T) {
 		Length:    8,
 		Data:      []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08},
 	}
-	unstamped := canModels.CanMessageData{}
-	unstampedCheck := canModels.CanMessageData{
+
+	unstamped := stripTimestampFromMessage(stamped)
+	unstampedCheck := &canModels.CanMessageData{
 		Interface: "can0",
 		ID:        42,
 		Transmit:  false,
@@ -35,8 +37,6 @@ func TestCanInterfaceFilter(t *testing.T) {
 		Length:    8,
 		Data:      []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08},
 	}
-
-	marshalFrom(&stamped, &unstamped)
 	assert.Equal(t, unstamped, unstampedCheck, "Unstamped message should match expected value.")
 
 	hash1, err := hashCanMessageData(stamped)
@@ -65,4 +65,57 @@ func TestCanInterfaceFilter(t *testing.T) {
 	assert.Equal(t, skip1, false, "First occurrence of message should not be skipped.")
 	skip2 := a.Filter(stamped)
 	assert.Equal(t, skip2, true, "Second occurrence of message should be skipped.")
+}
+
+func TestFilterNonWatchedID(t *testing.T) {
+	lvl := new(slog.LevelVar)
+	lvl.Set(slog.LevelInfo)
+	l := logging.NewJSONLogger(lvl)
+
+	// Watch only ID 42; send a message with ID 99
+	a := NewDedupeFilterClient(l, 1000, []uint32{42})
+
+	msg := canModels.CanMessageTimestamped{
+		Timestamp: 111111111,
+		Interface: "can0",
+		ID:        99,
+		Transmit:  false,
+		Remote:    false,
+		Length:    4,
+		Data:      []byte{0x01, 0x02, 0x03, 0x04},
+	}
+
+	result := a.Filter(msg)
+	assert.Equal(t, false, result, "Message with non-watched ID should not be filtered (returned false).")
+}
+
+func TestFilterTimeoutExpiry(t *testing.T) {
+	lvl := new(slog.LevelVar)
+	lvl.Set(slog.LevelInfo)
+	l := logging.NewJSONLogger(lvl)
+
+	// 1ms timeout so it expires almost immediately
+	a := NewDedupeFilterClient(l, 1, []uint32{42})
+
+	msg := canModels.CanMessageTimestamped{
+		Timestamp: 222222222,
+		Interface: "can0",
+		ID:        42,
+		Transmit:  false,
+		Remote:    false,
+		Length:    4,
+		Data:      []byte{0xAA, 0xBB, 0xCC, 0xDD},
+	}
+
+	first := a.Filter(msg)
+	assert.Equal(t, false, first, "First occurrence should not be filtered.")
+
+	second := a.Filter(msg)
+	assert.Equal(t, true, second, "Immediate repeat should be filtered.")
+
+	// Wait for timeout to expire
+	time.Sleep(5 * time.Millisecond)
+
+	afterExpiry := a.Filter(msg)
+	assert.Equal(t, false, afterExpiry, "After timeout expiry, message should not be filtered (entry expired).")
 }

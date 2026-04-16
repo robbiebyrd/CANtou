@@ -82,20 +82,28 @@ func (c *MQTTClient) Handle(canMsg canModels.CanMessageTimestamped) {
 	}
 
 	if shouldFilter, filterName := c.shouldFilterMessage(canMsg); shouldFilter {
-		c.l.Debug("message filtered, dropping message", "message", c.ToJSON(canMsg), "filterName", *filterName)
+		msgString, _ := c.ToJSON(canMsg)
+		c.l.Debug("message filtered, dropping message", "message", msgString, "filterName", *filterName)
 		return
 	}
 
-	topic, msgString := c.getTopicFromMessage(canMsg), c.ToJSON(canMsg)
+	topic := c.getTopicFromMessage(canMsg)
+	msgString, err := c.ToJSON(canMsg)
+	if err != nil {
+		c.l.Error("MQTT failed to serialize message", "error", err)
+		return
+	}
 
 	token := c.client.Publish(topic, c.cfg.MQTTConfig.Qos, c.cfg.MQTTConfig.ShadowCopy, msgString)
 
-	if token.Wait() && token.Error() != nil {
-		c.l.Error(fmt.Sprintf("MQTT error publishing %v: %v", msgString, token.Error().Error()))
-		return
-	}
+	go func(t mqtt.Token, msg string) {
+		t.Wait()
+		if t.Error() != nil {
+			c.l.Error("MQTT publish failed", "error", t.Error())
+		}
+	}(token, msgString)
 
-	c.l.Debug(fmt.Sprintf("MQTT published message to topic %v: %v", topic, msgString))
+	c.l.Debug("MQTT published message", "topic", topic, "message", msgString)
 }
 
 func (c *MQTTClient) GetChannel() chan canModels.CanMessageTimestamped {
@@ -126,7 +134,7 @@ func (c *MQTTClient) getTopicFromMessage(canMsg canModels.CanMessageTimestamped)
 func (c *MQTTClient) shouldFilterMessage(canMsg canModels.CanMessageTimestamped) (bool, *string) {
 	for name, filter := range c.filters {
 		if filter.Filter(canMsg) {
-			c.l.Error("skipping")
+			c.l.Debug("message filtered, skipping", "filterName", name)
 			return true, &name
 		}
 	}

@@ -1,3 +1,6 @@
+// Package filter provides CAN message filter types.
+// NOTE: This package is not yet wired into the production pipeline (main.go).
+// See stories/079-b295 for context.
 package filter
 
 import (

@@ -158,7 +158,7 @@ func (c *InfluxDBClient) convertMsg(msg canModels.CanMessageTimestamped) InfluxD
 }
 
 func (c *InfluxDBClient) convertMany(msgs []canModels.CanMessageTimestamped) []InfluxDBCanMessage {
-	var convertedMessages []InfluxDBCanMessage
+	convertedMessages := make([]InfluxDBCanMessage, 0, len(msgs))
 	for _, m := range msgs {
 		convertedMessages = append(convertedMessages, c.convertMsg(m))
 	}

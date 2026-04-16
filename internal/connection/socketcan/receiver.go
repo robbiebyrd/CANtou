@@ -29,6 +29,12 @@ func (scc *SocketCanConnectionClient) Receive(wg *sync.WaitGroup) {
 					Data:      commonUtils.PadOrTrim(frame.Data[:], 8),
 				}
 			}
+			// Inner loop exited — check for graceful stop
+			if !scc.streaming {
+				return
+			}
+			// Backoff before reconnect attempt
+			time.Sleep(100 * time.Millisecond)
 		}
 	})
 }

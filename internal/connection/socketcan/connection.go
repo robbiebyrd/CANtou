@@ -117,8 +117,9 @@ func (scc *SocketCanConnectionClient) IsOpen() bool {
 }
 
 func (scc *SocketCanConnectionClient) Discontinue() error {
-	scc.receiver.Close()
+	if err := scc.receiver.Close(); err != nil {
+		return err
+	}
 	scc.streaming = false
-
 	return nil
 }

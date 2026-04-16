@@ -3,17 +3,14 @@ package broadcast
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"slices"
+	"sync/atomic"
+	"time"
 
 	"github.com/robbiebyrd/bb/internal/client/common"
 	canModels "github.com/robbiebyrd/bb/internal/models"
 )
-
-type BroadcastInterface interface {
-	Add(listener BroadcastClientListener) error
-	Remove(name string) error
-	Broadcast()
-}
 
 type BroadcastClientListener struct {
 	Name    string
@@ -25,17 +22,19 @@ type BroadcastClient struct {
 	ctx               *context.Context
 	broadcastChannels []BroadcastClientListener
 	incomingChannel   chan canModels.CanMessageTimestamped
-	msgCount          int
+	msgCount          atomic.Uint64
+	l                 *slog.Logger
 }
 
 func NewBroadcastClient(
 	ctx *context.Context,
 	incomingChannel chan canModels.CanMessageTimestamped,
+	l *slog.Logger,
 ) *BroadcastClient {
 	return &BroadcastClient{
 		ctx:             ctx,
 		incomingChannel: incomingChannel,
-		msgCount:        0,
+		l:               l,
 	}
 }
 
@@ -45,16 +44,6 @@ func (scc *BroadcastClient) Add(listener BroadcastClientListener) error {
 	}
 	scc.broadcastChannels = append(scc.broadcastChannels, listener)
 
-	return nil
-}
-
-func (scc *BroadcastClient) AddMany(listeners []BroadcastClientListener) error {
-	for _, listener := range listeners {
-		err := scc.Add(listener)
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -70,9 +59,24 @@ func (scc *BroadcastClient) Remove(name string) error {
 }
 
 func (scc *BroadcastClient) Broadcast() error {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+	go func() {
+		var lastCount uint64
+		for range ticker.C {
+			current := scc.msgCount.Load()
+			rate := (current - lastCount) / 5
+			lastCount = current
+			scc.l.Info("broadcast throughput",
+				"msgs_per_sec", rate,
+				"buffer_queue", len(scc.incomingChannel),
+			)
+		}
+	}()
+
 	for {
 		canMsg := <-scc.incomingChannel
-		scc.msgCount++
+		scc.msgCount.Add(1)
 		for _, c := range scc.broadcastChannels {
 			broadcastMsg := true
 			if c.Filter != nil {
