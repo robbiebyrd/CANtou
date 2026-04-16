@@ -23,7 +23,6 @@ type DBCParserClient struct {
 
 func NewDBCParserClient(
 	l *slog.Logger,
-	timeout int,
 	dbcFilePath string,
 ) canModels.ParserInterface {
 	dc := &DBCParserClient{l: l, dbcFilePath: dbcFilePath}

@@ -49,18 +49,3 @@ type CanConnection interface {
 	Receive(wg *sync.WaitGroup)
 }
 
-type FrameInterface interface {
-	JSON() string
-	MarshalJSON() ([]byte, error)
-	String() string
-	UnmarshalJSON(jsonData []byte) error
-	UnmarshalString(s string) error
-	Validate() error
-}
-
-type ReceiverInterface interface {
-	Receive() bool
-	Frame() FrameInterface
-	Err() error
-	Close() error
-}

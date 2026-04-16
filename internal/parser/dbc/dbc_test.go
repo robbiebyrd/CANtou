@@ -11,7 +11,7 @@ import (
 
 func TestLoad(t *testing.T) {
 	l := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	client := NewDBCParserClient(l, 0, "example.dbc")
+	client := NewDBCParserClient(l,"example.dbc")
 	dc := client.(*DBCParserClient)
 
 	if dc.db == nil {
@@ -35,7 +35,7 @@ func TestLoad(t *testing.T) {
 
 func TestLoad_FileNotFound(t *testing.T) {
 	l := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	client := NewDBCParserClient(l, 0, "nonexistent.dbc")
+	client := NewDBCParserClient(l,"nonexistent.dbc")
 	dc := client.(*DBCParserClient)
 
 	if dc.db != nil {
@@ -45,7 +45,7 @@ func TestLoad_FileNotFound(t *testing.T) {
 
 func TestParse_KnownMessage(t *testing.T) {
 	l := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	client := NewDBCParserClient(l, 0, "example.dbc")
+	client := NewDBCParserClient(l,"example.dbc")
 
 	// Message ID 168 = TORQ_0A8 (8 bytes, from DME).
 	// Signals:
@@ -116,7 +116,7 @@ func TestParse_KnownMessage(t *testing.T) {
 
 func TestParse_UnknownMessage(t *testing.T) {
 	l := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	client := NewDBCParserClient(l, 0, "example.dbc")
+	client := NewDBCParserClient(l,"example.dbc")
 
 	result := client.Parse(canModels.CanMessageData{
 		ID:     99999,
@@ -130,7 +130,7 @@ func TestParse_UnknownMessage(t *testing.T) {
 
 func TestParse_NilDatabase(t *testing.T) {
 	l := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	client := NewDBCParserClient(l, 0, "nonexistent.dbc")
+	client := NewDBCParserClient(l,"nonexistent.dbc")
 
 	result := client.Parse(canModels.CanMessageData{
 		ID:     168,

@@ -12,10 +12,6 @@ func PadOrTrim(bb []byte, size int) []byte {
 	return tmp
 }
 
-func ArrayAllFalse(arr []bool) bool {
-	return !ArrayContainsBool(arr, true)
-}
-
 func ArrayAllTrue(arr []bool) bool {
 	return !ArrayContainsBool(arr, false)
 }

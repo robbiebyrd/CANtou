@@ -15,7 +15,6 @@ import (
 type CSVClient struct {
 	w               *csv.Writer
 	includeHeaders  bool
-	messageBlock    []canModels.CanMessageTimestamped
 	incomingChannel chan canModels.CanMessageTimestamped
 	filters         map[string]canModels.FilterInterface
 	l               *slog.Logger
@@ -29,15 +28,14 @@ func NewClient(ctx *context.Context, cfg *canModels.Config, logger *slog.Logger)
 	}
 
 	writer := csv.NewWriter(file)
-	defer writer.Flush()
 
 	header := []string{"timestamp", "id", "interface", "remote", "transmit", "length", "data"}
 	writer.Write(header)
+	writer.Flush()
 
 	return &CSVClient{
 		w:               writer,
 		includeHeaders:  cfg.CSVLog.IncludeHeaders,
-		messageBlock:    []canModels.CanMessageTimestamped{},
 		incomingChannel: make(chan canModels.CanMessageTimestamped, cfg.MessageBufferSize),
 		filters:         make(map[string]canModels.FilterInterface),
 		l:               logger,
@@ -62,13 +60,18 @@ func (c *CSVClient) Handle(canMsg canModels.CanMessageTimestamped) {
 		strconv.FormatBool(canMsg.Transmit),
 		strconv.Itoa(int(canMsg.Length)),
 		hex.EncodeToString(canMsg.Data)}
-	c.w.Write(row)
-	c.w.Flush()
+	if err := c.w.Write(row); err != nil {
+		c.l.Error("csv write error", "error", err)
+	}
 }
 
 func (c *CSVClient) HandleChannel() error {
 	for canMsg := range c.incomingChannel {
 		c.Handle(canMsg)
+	}
+	c.w.Flush()
+	if err := c.w.Error(); err != nil {
+		c.l.Error("csv flush error", "error", err)
 	}
 	return nil
 }

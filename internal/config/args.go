@@ -13,7 +13,9 @@ func Load(logger *slog.Logger) (canModels.Config, string) {
 	cfg, err := env.ParseAs[canModels.Config]()
 	if err != nil {
 		panic(err)
-	} else if len(cfg.CanInterfaces) == 0 {
+	}
+
+	if len(cfg.CanInterfaces) == 0 {
 		logger.Warn("no can interfaces defined in env, defaulting to single simulation interface")
 		cfg.CanInterfaces = []canModels.CanInterfaceOption{
 			{

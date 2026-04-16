@@ -1,9 +1,7 @@
 package dedupe
 
 import (
-	"encoding/json"
 	"log/slog"
-	"slices"
 	"time"
 
 	"github.com/mitchellh/hashstructure/v2"
@@ -15,11 +13,20 @@ type DedupeFilterClient struct {
 	storage map[uint64]time.Time
 	l       *slog.Logger
 	timeout int
-	ids     []uint32
+	ids     map[uint32]struct{}
 }
 
 func NewDedupeFilterClient(l *slog.Logger, timeout int, ids []uint32) canModels.FilterInterface {
-	return &DedupeFilterClient{make(map[uint64]time.Time), l, timeout, ids}
+	idMap := make(map[uint32]struct{}, len(ids))
+	for _, id := range ids {
+		idMap[id] = struct{}{}
+	}
+	return &DedupeFilterClient{
+		storage: make(map[uint64]time.Time),
+		l:       l,
+		timeout: timeout,
+		ids:     idMap,
+	}
 }
 
 func (dc *DedupeFilterClient) Add(_ canModels.CanMessageFilter) error {
@@ -29,8 +36,10 @@ func (dc *DedupeFilterClient) Add(_ canModels.CanMessageFilter) error {
 func (dc *DedupeFilterClient) Mode(_ canModels.CanFilterGroupOperator) {}
 
 func (dc *DedupeFilterClient) Filter(canMsg canModels.CanMessageTimestamped) bool {
-	if !slices.Contains(dc.ids, canMsg.ID) {
-		return false
+	if len(dc.ids) > 0 {
+		if _, ok := dc.ids[canMsg.ID]; !ok {
+			return false
+		}
 	}
 
 	msgHash, err := hashCanMessageData(canMsg)
@@ -44,6 +53,12 @@ func (dc *DedupeFilterClient) Filter(canMsg canModels.CanMessageTimestamped) boo
 	if !ok {
 		dc.l.Debug("no previous message with hash found", "msgHash", msgHash)
 		dc.storage[msgHash] = time.Now()
+		// Sweep expired entries on new additions
+		for hash, t := range dc.storage {
+			if time.Since(t) >= time.Duration(dc.timeout)*time.Millisecond {
+				delete(dc.storage, hash)
+			}
+		}
 		return false
 	}
 
@@ -57,27 +72,19 @@ func (dc *DedupeFilterClient) Filter(canMsg canModels.CanMessageTimestamped) boo
 	return true
 }
 
-func marshalFrom(source *canModels.CanMessageTimestamped, destination *canModels.CanMessageData) error {
-	bytes, err := json.Marshal(source)
-	json.Unmarshal(bytes, destination)
-	return err
-}
-
-func stripTimestampFromMessage(canMsg canModels.CanMessageTimestamped) (*canModels.CanMessageData, error) {
-	var small = &canModels.CanMessageData{}
-	err := marshalFrom(&canMsg, small)
-	if err != nil {
-		return nil, err
+func stripTimestampFromMessage(canMsg canModels.CanMessageTimestamped) *canModels.CanMessageData {
+	return &canModels.CanMessageData{
+		Interface: canMsg.Interface,
+		ID:        canMsg.ID,
+		Transmit:  canMsg.Transmit,
+		Remote:    canMsg.Remote,
+		Length:    canMsg.Length,
+		Data:      canMsg.Data,
 	}
-
-	return small, nil
 }
 
 func hashCanMessageData(canMsg canModels.CanMessageTimestamped) (uint64, error) {
-	updatedMsg, err := stripTimestampFromMessage(canMsg)
-	if err != nil {
-		return 0, err
-	}
+	updatedMsg := stripTimestampFromMessage(canMsg)
 
 	hashed, err := hashstructure.Hash(updatedMsg, hashstructure.FormatV2, nil)
 	if err != nil {

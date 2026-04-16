@@ -80,7 +80,7 @@ func NewApp() canModels.AppInterface {
 	canMsgChannel := make(chan canModels.CanMessageTimestamped, cfg.MessageBufferSize)
 
 	l.Debug("creating broadcast client")
-	broadcastClient := broadcast.NewBroadcastClient(&ctx, canMsgChannel)
+	broadcastClient := broadcast.NewBroadcastClient(&ctx, canMsgChannel, l)
 
 	l.Debug("creating connection manager")
 	connections := cm.NewConnectionManager(&ctx, &cfg, canMsgChannel, l)
