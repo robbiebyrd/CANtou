@@ -37,5 +37,5 @@ data
 .lh/
 /.vscode
 /.claude
-/stories/archive
-config/influxdb/
+stories/archive
+config/influxdb
