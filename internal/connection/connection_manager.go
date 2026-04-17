@@ -5,7 +5,9 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/robbiebyrd/bb/internal/connection/playback"
 	"github.com/robbiebyrd/bb/internal/connection/simulate"
+	"github.com/robbiebyrd/bb/internal/connection/slcan"
 	"github.com/robbiebyrd/bb/internal/connection/socketcan"
 	canModels "github.com/robbiebyrd/bb/internal/models"
 )
@@ -87,6 +89,33 @@ func (cm *CanConnectionManager) Connect(options canModels.CanInterfaceOption) {
 				&options.Network,
 				&options.URI,
 				nil,
+			),
+		)
+	case "slcan":
+		cm.Add(
+			slcan.NewSLCanConnection(
+				cm.ctx,
+				cm.cfg,
+				options.Name,
+				cm.MessageChannel,
+				&options.Network,
+				&options.URI,
+				&options.DBCFile,
+			),
+		)
+	case "playback":
+		cm.Add(
+			playback.NewPlaybackCanClient(
+				cm.ctx,
+				cm.cfg,
+				options.Name,
+				cm.MessageChannel,
+				options.URI,
+				options.Loop,
+				cm.l,
+				&options.Network,
+				nil,
+				&options.DBCFile,
 			),
 		)
 	default:

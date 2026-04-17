@@ -31,6 +31,7 @@ type CanInterfaceOption struct {
 	URI     string `env:"URI"           envDefault:""`
 	Network string `env:"NET"           envDefault:"can"`
 	DBCFile string `env:"DBC"           envDefault:""`
+	Loop    bool   `env:"LOOP"          envDefault:"false"`
 }
 
 type CanConnection interface {
