@@ -75,6 +75,14 @@ func (b *AppData) AddOutput(c canModels.OutputClient) {
 
 func (b *AppData) SetSignalDispatcher(d canModels.SignalDispatcherRegistrar) {
 	b.signalDispatcher = d
+	if err := b.broadcastClient.Add(broadcast.BroadcastClientListener{
+		Name:    "signal-dispatcher",
+		Channel: d.GetChannel(),
+	}); err != nil {
+		b.logger.Error("failed to register signal dispatcher with broadcast client", "error", err)
+		return
+	}
+	b.wgClients.Go(d.Dispatch)
 }
 
 func (b *AppData) AddOutputs(cs []canModels.OutputClient) {
