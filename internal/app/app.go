@@ -59,8 +59,10 @@ func NewApp(cfg *canModels.Config, logger *slog.Logger, logLevel *slog.LevelVar)
 }
 
 func (b *AppData) AddOutput(c canModels.OutputClient) {
-	b.logger.Debug("running output client", "name", c.GetName())
-	b.wgClients.Go(c.Run)
+	if rc, ok := c.(canModels.RunnerClient); ok {
+		b.logger.Debug("running output client", "name", c.GetName())
+		b.wgClients.Go(rc.Run)
+	}
 
 	b.logger.Debug("starting internal handler for output client", "name", c.GetName())
 	b.wgClients.Go(c.HandleCanMessageChannel)

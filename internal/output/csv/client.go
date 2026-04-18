@@ -99,7 +99,3 @@ func (c *CSVClient) GetChannel() chan canModels.CanMessageTimestamped {
 func (c *CSVClient) GetName() string {
 	return "output-csv"
 }
-
-func (c *CSVClient) Run() error {
-	return nil
-}

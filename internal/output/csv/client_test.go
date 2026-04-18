@@ -93,11 +93,6 @@ func TestCSVClient_GetChannel(t *testing.T) {
 	assert.NotNil(t, client.GetChannel())
 }
 
-func TestCSVClient_Run(t *testing.T) {
-	client, _ := newTestClient(t, &mockResolver{})
-	assert.NoError(t, client.Run())
-}
-
 func TestCSVClient_AddFilter(t *testing.T) {
 	client, _ := newTestClient(t, &mockResolver{})
 	f := &mockFilter{}

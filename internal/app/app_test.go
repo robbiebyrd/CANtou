@@ -35,7 +35,6 @@ func newMockSignalClient() *mockSignalClient {
 	}
 }
 
-func (m *mockSignalClient) Run() error                                      { return nil }
 func (m *mockSignalClient) HandleCanMessage(_ canModels.CanMessageTimestamped) {}
 func (m *mockSignalClient) HandleCanMessageChannel() error {
 	m.started <- struct{}{}

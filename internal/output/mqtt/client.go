@@ -160,10 +160,6 @@ func (c *MQTTClient) GetName() string {
 	return "output-mqtt"
 }
 
-func (c *MQTTClient) Run() error {
-	return nil
-}
-
 // publish sends payload to topic and waits for the broker acknowledgment in a goroutine.
 func (c *MQTTClient) publish(topic string, payload any) {
 	token := c.client.Publish(topic, c.qos, c.shadowCopy, payload)

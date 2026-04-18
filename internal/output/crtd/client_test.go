@@ -269,12 +269,6 @@ func TestHandleChannel(t *testing.T) {
 	assert.Contains(t, lines[2], "300", "Third line should contain ID 300")
 }
 
-func TestRun(t *testing.T) {
-	client, _ := newTestClient(t)
-	err := client.Run()
-	assert.Nil(t, err, "Run should return nil")
-}
-
 func TestHandleChannel_ClosesFile(t *testing.T) {
 	client, f := newTestClient(t)
 
