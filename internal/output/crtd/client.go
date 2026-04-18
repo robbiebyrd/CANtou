@@ -132,7 +132,3 @@ func (c *CRTDLoggerClient) GetChannel() chan canModels.CanMessageTimestamped {
 func (c *CRTDLoggerClient) GetName() string {
 	return "output-crtd"
 }
-
-func (c *CRTDLoggerClient) Run() error {
-	return nil
-}

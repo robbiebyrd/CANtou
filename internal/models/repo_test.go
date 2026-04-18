@@ -12,7 +12,6 @@ import (
 // embeds OutputClient and declares all expected signal methods.
 type staticSignalOutputClient struct{}
 
-func (s *staticSignalOutputClient) Run() error                                     { return nil }
 func (s *staticSignalOutputClient) HandleCanMessage(_ models.CanMessageTimestamped) {}
 func (s *staticSignalOutputClient) HandleCanMessageChannel() error                 { return nil }
 func (s *staticSignalOutputClient) GetChannel() chan models.CanMessageTimestamped  { return nil }
