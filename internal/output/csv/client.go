@@ -31,9 +31,11 @@ func NewClient(ctx context.Context, cfg *canModels.Config, logger *slog.Logger, 
 
 	writer := csv.NewWriter(file)
 
-	header := []string{"timestamp", "id", "interface", "remote", "transmit", "length", "data"}
-	if err = writer.Write(header); err != nil {
-		logger.Error("csv write header error", "error", err)
+	if cfg.CSVLog.IncludeHeaders {
+		header := []string{"timestamp", "id", "interface", "remote", "transmit", "length", "data"}
+		if err = writer.Write(header); err != nil {
+			logger.Error("csv write header error", "error", err)
+		}
 	}
 
 	return &CSVClient{

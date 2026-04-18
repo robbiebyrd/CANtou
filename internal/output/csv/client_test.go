@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"io"
 	"log/slog"
-	"net"
 	"os"
 	"sync"
 	"testing"
@@ -18,27 +17,14 @@ import (
 // mockCanConn implements canModels.CanConnection for testing.
 type mockCanConn struct {
 	interfaceName string
-	uri           string
 }
 
-func (m *mockCanConn) GetID() int                  { return 0 }
-func (m *mockCanConn) SetID(_ int)                 {}
-func (m *mockCanConn) GetName() string             { return "" }
-func (m *mockCanConn) GetInterfaceName() string    { return m.interfaceName }
-func (m *mockCanConn) SetName(_ string)            {}
-func (m *mockCanConn) GetDBCFilePath() *string     { return nil }
-func (m *mockCanConn) SetDBCFilePath(_ *string)    {}
-func (m *mockCanConn) GetConnection() net.Conn     { return nil }
-func (m *mockCanConn) SetConnection(_ net.Conn)    {}
-func (m *mockCanConn) GetNetwork() string          { return "" }
-func (m *mockCanConn) SetNetwork(_ string)         {}
-func (m *mockCanConn) GetURI() string              { return m.uri }
-func (m *mockCanConn) SetURI(_ string)             {}
-func (m *mockCanConn) Open() error                 { return nil }
-func (m *mockCanConn) Close() error                { return nil }
-func (m *mockCanConn) IsOpen() bool                { return false }
-func (m *mockCanConn) Discontinue() error          { return nil }
-func (m *mockCanConn) Receive(_ *sync.WaitGroup)   {}
+func (m *mockCanConn) SetID(_ int)                {}
+func (m *mockCanConn) GetName() string            { return "" }
+func (m *mockCanConn) GetInterfaceName() string   { return m.interfaceName }
+func (m *mockCanConn) Open() error                { return nil }
+func (m *mockCanConn) Close() error               { return nil }
+func (m *mockCanConn) Receive(_ *sync.WaitGroup)  {}
 
 // mockResolver implements canModels.InterfaceResolver for testing.
 type mockResolver struct {
@@ -215,4 +201,42 @@ func TestCSVClient_HandleCanMessageChannel_ClosesFile(t *testing.T) {
 
 	// The file handle should be closed; a second Close call returns an error.
 	assert.Error(t, f.Close(), "file should already be closed after HandleCanMessageChannel returns")
+}
+
+func newTestConfig(t *testing.T, includeHeaders bool) *canModels.Config {
+	t.Helper()
+	f, err := os.CreateTemp("", "csv_newclient_*.csv")
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	t.Cleanup(func() { os.Remove(f.Name()) })
+	return &canModels.Config{
+		CSVLog: canModels.CSVLogConfig{
+			OutputFile:     f.Name(),
+			IncludeHeaders: includeHeaders,
+		},
+		MessageBufferSize: 16,
+	}
+}
+
+func TestNewClient_IncludeHeaders_True(t *testing.T) {
+	cfg := newTestConfig(t, true)
+	client, err := NewClient(t.Context(), cfg, silentLogger(), &mockResolver{})
+	require.NoError(t, err)
+	csvClient := client.(*CSVClient)
+	csvClient.w.Flush()
+
+	rows := readRowsByName(t, cfg.CSVLog.OutputFile)
+	require.Len(t, rows, 1, "header row should be written when IncludeHeaders is true")
+	assert.Equal(t, []string{"timestamp", "id", "interface", "remote", "transmit", "length", "data"}, rows[0])
+}
+
+func TestNewClient_IncludeHeaders_False(t *testing.T) {
+	cfg := newTestConfig(t, false)
+	client, err := NewClient(t.Context(), cfg, silentLogger(), &mockResolver{})
+	require.NoError(t, err)
+	csvClient := client.(*CSVClient)
+	csvClient.w.Flush()
+
+	rows := readRowsByName(t, cfg.CSVLog.OutputFile)
+	assert.Empty(t, rows, "no header row should be written when IncludeHeaders is false")
 }
