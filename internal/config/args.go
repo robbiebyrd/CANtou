@@ -69,8 +69,9 @@ func LoadInfluxToken(cfg *canModels.Config, logger *slog.Logger) error {
 }
 
 func ToJSON(config canModels.Config) (*string, error) {
-	// Zero the token before marshalling to prevent it appearing in logs.
+	// Zero secrets before marshalling to prevent them appearing in logs.
 	config.InfluxDB.Token = ""
+	config.MQTTConfig.Password = ""
 	jsonBytes, err := json.Marshal(config)
 	if err != nil {
 		return nil, err

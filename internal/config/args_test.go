@@ -36,6 +36,24 @@ func TestMQTTConfig_OptionalWhenHostAbsent(t *testing.T) {
 	assert.Equal(t, "", cfg.ClientId)
 }
 
+func TestToJSON_StripsMQTTPassword(t *testing.T) {
+	cfg := canModels.Config{
+		MQTTConfig: canModels.MQTTConfig{Password: "super-secret"},
+	}
+	jsonStr, err := config.ToJSON(cfg)
+	require.NoError(t, err)
+	assert.NotContains(t, *jsonStr, "super-secret", "ToJSON must not expose MQTT password in output")
+}
+
+func TestToJSON_StripsInfluxToken(t *testing.T) {
+	cfg := canModels.Config{
+		InfluxDB: canModels.InfluxDBConfig{Token: "influx-token"},
+	}
+	jsonStr, err := config.ToJSON(cfg)
+	require.NoError(t, err)
+	assert.NotContains(t, *jsonStr, "influx-token", "ToJSON must not expose InfluxDB token in output")
+}
+
 func TestInfluxDBConfig_OptionalWhenHostAbsent(t *testing.T) {
 	os.Unsetenv("INFLUX_HOST")
 

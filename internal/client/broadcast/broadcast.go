@@ -63,14 +63,19 @@ func (scc *BroadcastClient) Broadcast() error {
 	defer ticker.Stop()
 	go func() {
 		var lastCount uint64
-		for range ticker.C {
-			current := scc.msgCount.Load()
-			rate := (current - lastCount) / 5
-			lastCount = current
-			scc.l.Info("broadcast throughput",
-				"msgs_per_sec", rate,
-				"buffer_queue", len(scc.incomingChannel),
-			)
+		for {
+			select {
+			case <-ticker.C:
+				current := scc.msgCount.Load()
+				rate := (current - lastCount) / 5
+				lastCount = current
+				scc.l.Info("broadcast throughput",
+					"msgs_per_sec", rate,
+					"buffer_queue", len(scc.incomingChannel),
+				)
+			case <-scc.ctx.Done():
+				return
+			}
 		}
 	}()
 

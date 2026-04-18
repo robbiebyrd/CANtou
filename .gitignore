@@ -38,3 +38,4 @@ data
 /.vscode
 /.claude
 /stories/archive
+config/influxdb/
