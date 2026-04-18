@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"log/slog"
-	"net"
 	"sync"
 	"testing"
 
@@ -16,35 +15,21 @@ import (
 
 // mockConn implements canModels.CanConnection for testing without real hardware.
 type mockConn struct {
-	id          int
-	name        string
-	network     string
-	uri         string
-	dbcFilePath *string
-	open        bool
+	id   int
+	name string
+	open bool
 }
 
-func (m *mockConn) GetID() int                  { return m.id }
-func (m *mockConn) SetID(id int)                { m.id = id }
-func (m *mockConn) GetName() string             { return m.name }
-func (m *mockConn) GetInterfaceName() string    { return m.name }
-func (m *mockConn) SetName(n string)            { m.name = n }
-func (m *mockConn) GetDBCFilePath() *string     { return m.dbcFilePath }
-func (m *mockConn) SetDBCFilePath(p *string)    { m.dbcFilePath = p }
-func (m *mockConn) GetConnection() net.Conn     { return nil }
-func (m *mockConn) SetConnection(_ net.Conn)    {}
-func (m *mockConn) GetNetwork() string          { return m.network }
-func (m *mockConn) SetNetwork(n string)         { m.network = n }
-func (m *mockConn) GetURI() string              { return m.uri }
-func (m *mockConn) SetURI(u string)             { m.uri = u }
-func (m *mockConn) Open() error                 { m.open = true; return nil }
-func (m *mockConn) Close() error                { m.open = false; return nil }
-func (m *mockConn) IsOpen() bool                { return m.open }
-func (m *mockConn) Discontinue() error          { return nil }
-func (m *mockConn) Receive(_ *sync.WaitGroup)   {}
+func (m *mockConn) GetID() int                 { return m.id }
+func (m *mockConn) SetID(id int)               { m.id = id }
+func (m *mockConn) GetName() string            { return m.name }
+func (m *mockConn) GetInterfaceName() string   { return m.name }
+func (m *mockConn) Open() error                { m.open = true; return nil }
+func (m *mockConn) Close() error               { m.open = false; return nil }
+func (m *mockConn) Receive(_ *sync.WaitGroup)  {}
 
 func newMock(name string) *mockConn {
-	return &mockConn{name: name, network: "sim", uri: name}
+	return &mockConn{name: name}
 }
 
 func newTestManager(t *testing.T) canModels.ConnectionManager {

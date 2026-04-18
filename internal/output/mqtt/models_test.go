@@ -2,7 +2,6 @@ package mqtt
 
 import (
 	"encoding/json"
-	"net"
 	"sync"
 	"testing"
 
@@ -16,27 +15,14 @@ import (
 type mockCanConn struct {
 	name          string
 	interfaceName string
-	uri           string
 }
 
-func (m *mockCanConn) GetID() int                  { return 0 }
-func (m *mockCanConn) SetID(_ int)                 {}
-func (m *mockCanConn) GetName() string             { return m.name }
-func (m *mockCanConn) GetInterfaceName() string    { return m.interfaceName }
-func (m *mockCanConn) SetName(_ string)            {}
-func (m *mockCanConn) GetDBCFilePath() *string     { return nil }
-func (m *mockCanConn) SetDBCFilePath(_ *string)    {}
-func (m *mockCanConn) GetConnection() net.Conn     { return nil }
-func (m *mockCanConn) SetConnection(_ net.Conn)    {}
-func (m *mockCanConn) GetNetwork() string          { return "" }
-func (m *mockCanConn) SetNetwork(_ string)         {}
-func (m *mockCanConn) GetURI() string              { return m.uri }
-func (m *mockCanConn) SetURI(_ string)             {}
-func (m *mockCanConn) Open() error                 { return nil }
-func (m *mockCanConn) Close() error                { return nil }
-func (m *mockCanConn) IsOpen() bool                { return false }
-func (m *mockCanConn) Discontinue() error          { return nil }
-func (m *mockCanConn) Receive(_ *sync.WaitGroup)   {}
+func (m *mockCanConn) SetID(_ int)                {}
+func (m *mockCanConn) GetName() string            { return m.name }
+func (m *mockCanConn) GetInterfaceName() string   { return m.interfaceName }
+func (m *mockCanConn) Open() error                { return nil }
+func (m *mockCanConn) Close() error               { return nil }
+func (m *mockCanConn) Receive(_ *sync.WaitGroup)  {}
 
 // mockResolver implements canModels.InterfaceResolver for testing.
 type mockResolver struct {
@@ -123,7 +109,6 @@ func TestToJSON_InterfaceUsesConnectionName(t *testing.T) {
 			0: {
 				name:          "jeep0",
 				interfaceName: "jeep0-playback-/Users/robbie.byrd/Documents/Jeep/Static Remote Start.log",
-				uri:           "/Users/robbie.byrd/Documents/Jeep/Static Remote Start.log",
 			},
 		},
 	}
@@ -143,7 +128,7 @@ func TestToJSON_InterfaceUsesConnectionName(t *testing.T) {
 func TestGetTopicFromMessage_UsesConnectionName(t *testing.T) {
 	resolver := &mockResolver{
 		conns: map[int]*mockCanConn{
-			0: {name: "jeep0", uri: "/Users/robbie/Documents/Jeep/Static Remote Start.log"},
+			0: {name: "jeep0"},
 		},
 	}
 	c := &MQTTClient{
@@ -173,7 +158,7 @@ func TestGetTopicFromMessage_UnknownInterface(t *testing.T) {
 func TestGetTopicFromSignal_UsesConnectionName(t *testing.T) {
 	resolver := &mockResolver{
 		conns: map[int]*mockCanConn{
-			0: {name: "jeep0", uri: "/Users/robbie/Documents/Jeep/Static Remote Start.log"},
+			0: {name: "jeep0"},
 		},
 	}
 	c := &MQTTClient{
