@@ -29,6 +29,9 @@ func TestArrayContainsTrue(t *testing.T) {
 
 	oneTrue := ArrayContainsTrue([]bool{true, false, false})
 	assert.Equal(t, true, oneTrue, "Should be true.")
+
+	empty := ArrayContainsTrue([]bool{})
+	assert.Equal(t, false, empty, "OR with no filters should be false.")
 }
 
 func TestArrayContainsFalse(t *testing.T) {
@@ -48,5 +51,8 @@ func TestArrayAllTrue(t *testing.T) {
 
 	oneFalse := ArrayAllTrue([]bool{true, true, false})
 	assert.Equal(t, false, oneFalse, "Should be true.")
+
+	empty := ArrayAllTrue([]bool{})
+	assert.Equal(t, true, empty, "AND with no filters should be true (vacuous truth).")
 }
 
