@@ -30,7 +30,7 @@ type SimulationCanClient struct {
 	dbcFilePath *string
 }
 
-const CAN_MESSAGE_MAX_DATA_LENGTH = 8 // bytes
+const canMessageMaxDataLength = 8 // bytes
 
 func NewSimulationCanClient(
 	ctx context.Context,
@@ -147,7 +147,7 @@ func (scc *SimulationCanClient) Receive(wg *sync.WaitGroup) {
 	wg.Go(func() {
 		for {
 			// Create a slice of random bytes
-			randomBytes := make([]byte, CAN_MESSAGE_MAX_DATA_LENGTH)
+			randomBytes := make([]byte, canMessageMaxDataLength)
 
 			// Fill with pseudo-random bytes (crypto quality not needed for simulation).
 			for i := range randomBytes {
@@ -156,9 +156,9 @@ func (scc *SimulationCanClient) Receive(wg *sync.WaitGroup) {
 
 			// Select a random length for the data packet.
 			lengthOfDataPacket := []uint8{
-				CAN_MESSAGE_MAX_DATA_LENGTH / 4,
-				CAN_MESSAGE_MAX_DATA_LENGTH / 2,
-				CAN_MESSAGE_MAX_DATA_LENGTH,
+				canMessageMaxDataLength / 4,
+				canMessageMaxDataLength / 2,
+				canMessageMaxDataLength,
 			}
 			randomLength := lengthOfDataPacket[mathRand.Intn(len(lengthOfDataPacket))]
 
@@ -170,7 +170,7 @@ func (scc *SimulationCanClient) Receive(wg *sync.WaitGroup) {
 				ID:        uint32(mathRand.Intn(2047)),
 				Remote:    false,
 				Length:    randomLength,
-				Data:      commonUtils.PadOrTrim(randomBytes[:randomLength], int(CAN_MESSAGE_MAX_DATA_LENGTH)),
+				Data:      commonUtils.PadOrTrim(randomBytes[:randomLength], int(canMessageMaxDataLength)),
 			}:
 			case <-scc.ctx.Done():
 				return
