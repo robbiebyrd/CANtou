@@ -44,7 +44,7 @@ All config is environment-based via `caarlos0/env`.
 - **Interface name format**: `{name}{sep}{network}{sep}{uri}` — separator defaults to `-`, configurable via `CAN_INTERFACE_SEPARATOR`.
 - **Sim emit rate**: `SIM_RATE` is in **nanoseconds** between messages (e.g. `10000000` = 10ms = 100 msg/s).
 - **MQTT dedupe**: filters by message ID within a time window; `DEDUPE_IDS` is a comma-separated list of IDs to deduplicate (empty = all IDs).
-- **Prometheus frame counters**: `can_frames_total` only populates when `LOG_CAN_MESSAGES=true` (default). `can_signal_value` gauges always populate when a DBC file is configured.
+- **Prometheus frame counters**: the `can_frames_total` counter only populates when `LOG_CAN_MESSAGES=true` (default). `can_signal_value` gauges always populate when a DBC file is configured.
 - **Prometheus listen address**: bind to loopback (`127.0.0.1:9091`) by default; the Prometheus server in docker-compose scrapes `host.docker.internal:9091`.
 
 @.claude/wiz-claude.md
