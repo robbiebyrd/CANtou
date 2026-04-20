@@ -34,6 +34,11 @@ func DetectParser(path string, logger *slog.Logger) (LogParser, error) {
 		logger = slog.Default()
 	}
 
+	// Check for MF4 binary format before trying text-based parsers.
+	if isMF4File(path) {
+		return &MF4Parser{l: logger}, nil
+	}
+
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("opening %s: %w", path, err)
