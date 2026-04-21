@@ -1,4 +1,4 @@
-// Package mf4 implements an MDF4 (.mf4) output client for the bb pipeline.
+// Package mf4 implements an MDF4 (.mf4) output client for the cantou pipeline.
 //
 // Two independent files are produced, either of which can be disabled by
 // leaving its path empty in the configuration:
@@ -19,9 +19,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/robbiebyrd/bb/internal/client/common"
-	canModels "github.com/robbiebyrd/bb/internal/models"
-	mf4fmt "github.com/robbiebyrd/bb/internal/parser/mf4"
+	"github.com/robbiebyrd/cantou/internal/client/common"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
+	mf4fmt "github.com/robbiebyrd/cantou/internal/parser/mf4"
 )
 
 type Client struct {

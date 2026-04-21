@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net"
 
-	canModels "github.com/robbiebyrd/bb/internal/models"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
 // defaultPortBaudrate is the standard serial baudrate for SLCAN devices such as CANable.

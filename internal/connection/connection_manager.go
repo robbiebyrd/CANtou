@@ -6,11 +6,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/robbiebyrd/bb/internal/connection/playback"
-	"github.com/robbiebyrd/bb/internal/connection/simulate"
-	"github.com/robbiebyrd/bb/internal/connection/slcan"
-	"github.com/robbiebyrd/bb/internal/connection/socketcan"
-	canModels "github.com/robbiebyrd/bb/internal/models"
+	"github.com/robbiebyrd/cantou/internal/connection/playback"
+	"github.com/robbiebyrd/cantou/internal/connection/simulate"
+	"github.com/robbiebyrd/cantou/internal/connection/slcan"
+	"github.com/robbiebyrd/cantou/internal/connection/socketcan"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
 type CanConnectionManager struct {

@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"net"
 
-	canModels "github.com/robbiebyrd/bb/internal/models"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
 // PlaybackCanClient replays a log file as CAN frames, preserving the original

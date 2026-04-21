@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	canModels "github.com/robbiebyrd/bb/internal/models"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
 // StartThroughputReporter starts a background goroutine that logs channel

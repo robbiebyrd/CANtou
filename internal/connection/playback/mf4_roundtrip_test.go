@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	mf4fmt "github.com/robbiebyrd/bb/internal/parser/mf4"
+	mf4fmt "github.com/robbiebyrd/cantou/internal/parser/mf4"
 )
 
 // TestMF4Writer_RoundTripThroughParser asserts that a file produced by

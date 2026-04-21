@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	canModels "github.com/robbiebyrd/bb/internal/models"
-	"github.com/robbiebyrd/bb/internal/parser/obd2"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
+	"github.com/robbiebyrd/cantou/internal/parser/obd2"
 )
 
 // SignalDispatcher receives CanMessageTimestamped values, decodes them into

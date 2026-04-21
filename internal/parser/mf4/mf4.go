@@ -251,7 +251,7 @@ func WriteIDBlock(unfinalized bool) []byte {
 		copy(buf[0:8], "MDF     ")
 	}
 	copy(buf[8:16], "4.11    ")
-	copy(buf[16:24], "bb      ")
+	copy(buf[16:24], "cantou  ")
 	binary.LittleEndian.PutUint16(buf[28:30], 411)
 	if unfinalized {
 		binary.LittleEndian.PutUint16(buf[60:62], 1)

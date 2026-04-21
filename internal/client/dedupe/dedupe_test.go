@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/robbiebyrd/bb/internal/client/logging"
-	canModels "github.com/robbiebyrd/bb/internal/models"
+	"github.com/robbiebyrd/cantou/internal/client/logging"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
 func TestFilter_SweepEvictsExpiredEntries(t *testing.T) {

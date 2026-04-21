@@ -1,5 +1,5 @@
 # compose.yaml
-name: bb
+name: cantou
 services:
   influxdb3-core:
     container_name: influxdb3-core

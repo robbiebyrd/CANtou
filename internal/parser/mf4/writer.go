@@ -25,7 +25,7 @@ var (
 
 // LayoutScheme selects the record schema written by the MDF4 writer. CAN
 // schemes produce a CG named "CAN_DataFrame" so that the output can be
-// consumed by the bb playback parser or by any MDF4-aware tool that
+// consumed by the cantou playback parser or by any MDF4-aware tool that
 // recognises that bus channel group. The Signal scheme records decoded DBC
 // signals with fixed fields plus a VLSD label string.
 type LayoutScheme int

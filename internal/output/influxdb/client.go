@@ -15,8 +15,8 @@ import (
 
 	"github.com/InfluxCommunity/influxdb3-go/v2/influxdb3"
 
-	"github.com/robbiebyrd/bb/internal/client/common"
-	canModels "github.com/robbiebyrd/bb/internal/models"
+	"github.com/robbiebyrd/cantou/internal/client/common"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
 type InfluxDBClient struct {

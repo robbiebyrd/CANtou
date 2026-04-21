@@ -1,4 +1,4 @@
-module github.com/robbiebyrd/bb
+module github.com/robbiebyrd/cantou
 
 go 1.26.0
 

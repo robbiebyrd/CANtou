@@ -9,8 +9,8 @@ import (
 
 	"github.com/roffe/gocan"
 
-	commonUtils "github.com/robbiebyrd/bb/internal/client/common"
-	canModels "github.com/robbiebyrd/bb/internal/models"
+	commonUtils "github.com/robbiebyrd/cantou/internal/client/common"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
 func (scc *SLCanConnectionClient) Open() error {

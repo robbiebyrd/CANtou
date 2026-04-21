@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/robbiebyrd/bb/internal/models"
+	"github.com/robbiebyrd/cantou/internal/models"
 )
 
 // Standard CAN uses 11-bit arbitration IDs (max 0x7FF).

@@ -1,8 +1,8 @@
 package filter
 
 import (
-	"github.com/robbiebyrd/bb/internal/client/common"
-	canModels "github.com/robbiebyrd/bb/internal/models"
+	"github.com/robbiebyrd/cantou/internal/client/common"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
 type CanInterfaceFilter struct {

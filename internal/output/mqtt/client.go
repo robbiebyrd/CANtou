@@ -12,8 +12,8 @@ import (
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 
-	"github.com/robbiebyrd/bb/internal/client/common"
-	canModels "github.com/robbiebyrd/bb/internal/models"
+	"github.com/robbiebyrd/cantou/internal/client/common"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
 type MQTTClient struct {

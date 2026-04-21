@@ -11,8 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/robbiebyrd/bb/internal/client/common"
-	canModels "github.com/robbiebyrd/bb/internal/models"
+	"github.com/robbiebyrd/cantou/internal/client/common"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
 type CRTDLoggerClient struct {
@@ -32,7 +32,7 @@ type CRTDLoggerClient struct {
 // writeHeader writes the CRTD file header to w, logging each write error
 // individually so no error is silently overwritten by the next write.
 func writeHeader(w *bufio.Writer, cfg *canModels.Config, logger *slog.Logger) {
-	if _, err := fmt.Fprintln(w, "0.000000 CXX CRTD file created by bb"); err != nil {
+	if _, err := fmt.Fprintln(w, "0.000000 CXX CRTD file created by cantou"); err != nil {
 		logger.Error("Could not write header to CRTD file", "error", err)
 	}
 	for index, canInterface := range cfg.CanInterfaces {
