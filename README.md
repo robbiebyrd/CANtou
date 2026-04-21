@@ -1,5 +1,11 @@
 # CANtou
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/cantou-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/img/cantou-light.svg">
+  <img alt="Cantou" src="docs/img/cantou-light.svg">
+</picture>
+
 An easy-to-use CAN bus logger for any vehicle or test rig that speaks CAN.
 
 CANtou reads frames from one or more CAN interfaces, optionally decodes them with DBC files, and fans the results out to a configurable mix of sinks: time-series databases, message brokers, flat files, and metrics endpoints.
