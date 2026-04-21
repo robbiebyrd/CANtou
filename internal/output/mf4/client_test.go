@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	canModels "github.com/robbiebyrd/bb/internal/models"
-	mf4fmt "github.com/robbiebyrd/bb/internal/parser/mf4"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
+	mf4fmt "github.com/robbiebyrd/cantou/internal/parser/mf4"
 )
 
 func silentLogger() *slog.Logger {

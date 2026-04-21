@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	canModels "github.com/robbiebyrd/bb/internal/models"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
 // mockFilter implements canModels.FilterInterface for testing.
@@ -105,7 +105,7 @@ func TestNewClient(t *testing.T) {
 	assert.Contains(
 		t,
 		string(data),
-		"0.000000 CXX CRTD file created by bb",
+		"0.000000 CXX CRTD file created by cantou",
 		"File should contain CRTD header",
 	)
 }

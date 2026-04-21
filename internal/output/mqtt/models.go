@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
-	canModels "github.com/robbiebyrd/bb/internal/models"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
 func signalPayload(sig canModels.CanSignalTimestamped) string {

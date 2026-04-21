@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/robbiebyrd/bb/internal/models"
+	"github.com/robbiebyrd/cantou/internal/models"
 )
 
 // staticSignalOutputClient is a compile-time assertion that SignalOutputClient

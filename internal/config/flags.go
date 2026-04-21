@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	canModels "github.com/robbiebyrd/bb/internal/models"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
 // BindFlags registers all config fields as cobra flags on cmd, using the current

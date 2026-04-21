@@ -7,10 +7,10 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/robbiebyrd/bb/internal/client/broadcast"
-	"github.com/robbiebyrd/bb/internal/client/filter"
-	cm "github.com/robbiebyrd/bb/internal/connection"
-	canModels "github.com/robbiebyrd/bb/internal/models"
+	"github.com/robbiebyrd/cantou/internal/client/broadcast"
+	"github.com/robbiebyrd/cantou/internal/client/filter"
+	cm "github.com/robbiebyrd/cantou/internal/connection"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
 type AppData struct {

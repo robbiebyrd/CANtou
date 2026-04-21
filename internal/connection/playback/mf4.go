@@ -8,7 +8,7 @@ import (
 	"math"
 	"os"
 
-	mf4fmt "github.com/robbiebyrd/bb/internal/parser/mf4"
+	mf4fmt "github.com/robbiebyrd/cantou/internal/parser/mf4"
 )
 
 // MF4Parser reads ASAM MDF4 (.mf4) log files containing CAN bus data.

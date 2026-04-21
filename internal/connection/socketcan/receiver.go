@@ -6,8 +6,8 @@ import (
 
 	goSocketCan "go.einride.tech/can/pkg/socketcan"
 
-	commonUtils "github.com/robbiebyrd/bb/internal/client/common"
-	canModels "github.com/robbiebyrd/bb/internal/models"
+	commonUtils "github.com/robbiebyrd/cantou/internal/client/common"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
 func (scc *SocketCanConnectionClient) Receive(wg *sync.WaitGroup) {

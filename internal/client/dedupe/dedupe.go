@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	canModels "github.com/robbiebyrd/bb/internal/models"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
 type DedupeFilterClient struct {

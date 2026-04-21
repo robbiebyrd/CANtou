@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/robbiebyrd/bb/internal/config"
-	canModels "github.com/robbiebyrd/bb/internal/models"
+	"github.com/robbiebyrd/cantou/internal/config"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
 // runFlags creates a minimal cobra command, binds flags, parses args, and calls apply.

@@ -50,7 +50,7 @@ type MF4LogConfig struct {
 	// Finalize rewrites the DT block length and flips the ID block magic
 	// to "MDF     " on graceful shutdown so external MDF4 tools accept the
 	// file as finalized. Disable to always leave the file in streaming
-	// ("UnFinMF ") form — safer if bb may be killed abruptly.
+	// ("UnFinMF ") form — safer if cantou may be killed abruptly.
 	Finalize bool `env:"FINALIZE" envDefault:"true"`
 }
 

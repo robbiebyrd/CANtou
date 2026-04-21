@@ -11,7 +11,7 @@ import (
 	"go.einride.tech/can/pkg/dbc"
 	"go.einride.tech/can/pkg/descriptor"
 
-	canModels "github.com/robbiebyrd/bb/internal/models"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
 type DBCParserClient struct {

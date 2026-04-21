@@ -6,7 +6,7 @@
 
 ## Summary
 
-Add a `prometheus` output client that exposes CAN bus frames and decoded DBC signals as Prometheus metrics over an HTTP `/metrics` endpoint. The `bb` service acts as a Prometheus exporter — it listens on a configurable address and Prometheus scrapes it on its configured interval.
+Add a `prometheus` output client that exposes CAN bus frames and decoded DBC signals as Prometheus metrics over an HTTP `/metrics` endpoint. The `cantou` service acts as a Prometheus exporter — it listens on a configurable address and Prometheus scrapes it on its configured interval.
 
 This follows the pull model (not Pushgateway), which is correct for a long-running daemon. The InfluxDB output client is the primary structural template. A Prometheus server service is added to `docker-compose.yml` to scrape the exporter.
 
@@ -30,7 +30,7 @@ This follows the pull model (not Pushgateway), which is correct for a long-runni
 ### Best Practices
 
 - Library: `github.com/prometheus/client_golang` (packages: `prometheus`, `promhttp`)
-- Pull model: `bb` exposes `/metrics`; Prometheus server scrapes it. Never use Pushgateway for long-running services.
+- Pull model: `cantou` exposes `/metrics`; Prometheus server scrapes it. Never use Pushgateway for long-running services.
 - Signal values → `GaugeVec` (they go up and down)
 - Frame counts → `CounterVec` with `_total` suffix (monotonically increasing)
 - Use a **custom `prometheus.Registry`** (not `prometheus.DefaultRegisterer`) in the client to avoid test-time global state collisions
@@ -149,7 +149,7 @@ Each step: write failing test → implement → verify green → next step.
 
 - **Test:** `internal/app/app_test.go` — add a test that a `PrometheusClient` (constructed with a test listen addr) is accepted by `AddOutput` without error and is started as a `RunnerClient` and `SignalOutputClient`
 - **Implement:** `cmd/server/main.go`
-  - Add import `"github.com/robbiebyrd/bb/internal/output/prometheus"`
+  - Add import `"github.com/robbiebyrd/cantou/internal/output/prometheus"`
   - Add block after the MQTT block:
     ```go
     if cfg.Prometheus.ListenAddr != "" {
@@ -186,10 +186,10 @@ Each step: write failing test → implement → verify green → next step.
        scrape_interval: 15s
 
      scrape_configs:
-       - job_name: bb
+       - job_name: cantou
          static_configs:
-           # Use host.docker.internal when bb runs on the host (not in compose).
-           # Replace with the service name if bb is containerised.
+           # Use host.docker.internal when cantou runs on the host (not in compose).
+           # Replace with the service name if cantou is containerised.
            - targets: ['host.docker.internal:9091']
      ```
   3. Update `.env.example` with `PROMETHEUS_LISTEN_ADDR=:9091`

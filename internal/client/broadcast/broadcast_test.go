@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/robbiebyrd/bb/internal/client/filter"
-	canModels "github.com/robbiebyrd/bb/internal/models"
+	"github.com/robbiebyrd/cantou/internal/client/filter"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
 func newTestClient() (*BroadcastClient, chan canModels.CanMessageTimestamped) {

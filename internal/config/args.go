@@ -8,7 +8,7 @@ import (
 
 	"github.com/caarlos0/env/v11"
 
-	canModels "github.com/robbiebyrd/bb/internal/models"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
 func Load(logger *slog.Logger) (canModels.Config, string) {

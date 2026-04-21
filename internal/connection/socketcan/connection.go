@@ -8,7 +8,7 @@ import (
 	"go.einride.tech/can"
 	goSocketCan "go.einride.tech/can/pkg/socketcan"
 
-	canModels "github.com/robbiebyrd/bb/internal/models"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
 type ReceiverInterface interface {

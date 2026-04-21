@@ -1,4 +1,4 @@
-# bb — Bertha (2024 Jeep Wrangler 4xe CAN Bus Logger)
+# CANtou — Bertha (2024 Jeep Wrangler 4xe CAN Bus Logger)
 
 Go service that reads CAN bus frames and fans them out to InfluxDB, MQTT, CSV, and Prometheus.
 

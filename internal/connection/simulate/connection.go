@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	commonUtils "github.com/robbiebyrd/bb/internal/client/common"
-	canModels "github.com/robbiebyrd/bb/internal/models"
+	commonUtils "github.com/robbiebyrd/cantou/internal/client/common"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
 type SimulationCanClient struct {

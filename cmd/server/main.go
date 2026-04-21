@@ -6,20 +6,20 @@ import (
 
 	"github.com/spf13/cobra"
 
-	dbcassets "github.com/robbiebyrd/bb/dbcs"
-	"github.com/robbiebyrd/bb/internal/app"
-	"github.com/robbiebyrd/bb/internal/client/dedupe"
-	"github.com/robbiebyrd/bb/internal/client/logging"
-	"github.com/robbiebyrd/bb/internal/client/signaldispatch"
-	"github.com/robbiebyrd/bb/internal/config"
-	canModels "github.com/robbiebyrd/bb/internal/models"
-	"github.com/robbiebyrd/bb/internal/output/crtd"
-	"github.com/robbiebyrd/bb/internal/output/csv"
-	"github.com/robbiebyrd/bb/internal/output/influxdb"
-	mf4out "github.com/robbiebyrd/bb/internal/output/mf4"
-	"github.com/robbiebyrd/bb/internal/output/mqtt"
-	"github.com/robbiebyrd/bb/internal/output/prometheus"
-	"github.com/robbiebyrd/bb/internal/parser/dbc"
+	dbcassets "github.com/robbiebyrd/cantou/dbcs"
+	"github.com/robbiebyrd/cantou/internal/app"
+	"github.com/robbiebyrd/cantou/internal/client/dedupe"
+	"github.com/robbiebyrd/cantou/internal/client/logging"
+	"github.com/robbiebyrd/cantou/internal/client/signaldispatch"
+	"github.com/robbiebyrd/cantou/internal/config"
+	canModels "github.com/robbiebyrd/cantou/internal/models"
+	"github.com/robbiebyrd/cantou/internal/output/crtd"
+	"github.com/robbiebyrd/cantou/internal/output/csv"
+	"github.com/robbiebyrd/cantou/internal/output/influxdb"
+	mf4out "github.com/robbiebyrd/cantou/internal/output/mf4"
+	"github.com/robbiebyrd/cantou/internal/output/mqtt"
+	"github.com/robbiebyrd/cantou/internal/output/prometheus"
+	"github.com/robbiebyrd/cantou/internal/parser/dbc"
 )
 
 func main() {
@@ -37,7 +37,7 @@ func main() {
 	config.SetLogLevel(lvl, cfg.LogLevel)
 
 	rootCmd := &cobra.Command{
-		Use:           "bb",
+		Use:           "cantou",
 		Short:         "CAN bus logger for Bertha",
 		SilenceUsage:  true,
 		SilenceErrors: true,

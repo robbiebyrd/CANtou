@@ -3,8 +3,8 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: bb
+  - job_name: cantou
     static_configs:
-      # Use host.docker.internal when bb runs on the host (not in compose).
-      # Replace with the service name if bb is containerised.
+      # Use host.docker.internal when cantou runs on the host (not in compose).
+      # Replace with the service name if cantou is containerised.
       - targets: ['host.docker.internal:9091']
