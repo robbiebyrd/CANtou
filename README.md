@@ -1,9 +1,9 @@
 # CANtou
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/img/cantou-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="docs/img/cantou-light.svg">
-  <img alt="Cantou" src="docs/img/cantou-light.svg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/img/cantou-dark.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/cantou-light.svg">
+  <img alt="Cantou" src="docs/img/cantou-dark.svg">
 </picture>
 
 An easy-to-use CAN bus logger for any vehicle or test rig that speaks CAN.
