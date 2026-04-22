@@ -2,17 +2,13 @@ package csv
 
 import (
 	"context"
-	"encoding/csv"
-	"encoding/hex"
-	"fmt"
 	"log/slog"
-	"os"
-	"strconv"
 	"sync/atomic"
 	"time"
 
 	"github.com/robbiebyrd/cantou/internal/client/common"
 	canModels "github.com/robbiebyrd/cantou/internal/models"
+	csvfmt "github.com/robbiebyrd/cantou/internal/parser/csv"
 )
 
 // csvFlushInterval caps how long a buffered row can sit in memory before the
@@ -22,11 +18,8 @@ import (
 const csvFlushInterval = 1 * time.Second
 
 type CSVClient struct {
-	w              *csv.Writer
-	file           *os.File
-	signalWriter   *csv.Writer
-	signalFile     *os.File
-	includeHeaders bool
+	canWriter      *csvfmt.CANWriter
+	signalWriter   *csvfmt.SignalWriter
 	canChannel     chan canModels.CanMessageTimestamped
 	signalChannel  chan canModels.CanSignalTimestamped
 	filters        *common.FilterSet
@@ -37,59 +30,43 @@ type CSVClient struct {
 }
 
 func NewClient(
-	ctx context.Context,
+	_ context.Context,
 	cfg *canModels.Config,
 	logger *slog.Logger,
 	resolver canModels.InterfaceResolver,
 ) (canModels.OutputClient, error) {
 	var (
-		canFile      *os.File
-		canWriter    *csv.Writer
-		signalFile   *os.File
-		signalWriter *csv.Writer
+		canWriter    *csvfmt.CANWriter
+		signalWriter *csvfmt.SignalWriter
 	)
 
 	if cfg.CSVLog.CanOutputFile != "" {
-		f, err := os.OpenFile(cfg.CSVLog.CanOutputFile, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
+		w, err := csvfmt.NewCANWriter(cfg.CSVLog.CanOutputFile, cfg.CSVLog.IncludeHeaders)
 		if err != nil {
-			return nil, fmt.Errorf("opening CSV CAN output file: %w", err)
+			return nil, err
 		}
-		canFile = f
-		canWriter = csv.NewWriter(f)
-		if cfg.CSVLog.IncludeHeaders {
-			header := []string{"timestamp", "id", "interface", "remote", "transmit", "length", "data"}
-			if err = canWriter.Write(header); err != nil {
-				logger.Error("csv write CAN header error", "error", err)
-			}
-		}
+		canWriter = w
 	}
 
 	if cfg.CSVLog.SignalOutputFile != "" {
-		f, err := os.OpenFile(cfg.CSVLog.SignalOutputFile, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
+		w, err := csvfmt.NewSignalWriter(cfg.CSVLog.SignalOutputFile, cfg.CSVLog.IncludeHeaders)
 		if err != nil {
-			return nil, fmt.Errorf("opening CSV signal output file: %w", err)
-		}
-		signalFile = f
-		signalWriter = csv.NewWriter(f)
-		if cfg.CSVLog.IncludeHeaders {
-			header := []string{"timestamp", "interface", "message", "signal", "value", "unit"}
-			if err = signalWriter.Write(header); err != nil {
-				logger.Error("csv write signal header error", "error", err)
+			if canWriter != nil {
+				canWriter.Close()
 			}
+			return nil, err
 		}
+		signalWriter = w
 	}
 
 	return &CSVClient{
-		w:              canWriter,
-		file:           canFile,
-		signalWriter:   signalWriter,
-		signalFile:     signalFile,
-		includeHeaders: cfg.CSVLog.IncludeHeaders,
-		canChannel:     make(chan canModels.CanMessageTimestamped, cfg.MessageBufferSize),
-		signalChannel:  make(chan canModels.CanSignalTimestamped, cfg.MessageBufferSize),
-		filters:        common.NewFilterSet(),
-		l:              logger,
-		resolver:       resolver,
+		canWriter:     canWriter,
+		signalWriter:  signalWriter,
+		canChannel:    make(chan canModels.CanMessageTimestamped, cfg.MessageBufferSize),
+		signalChannel: make(chan canModels.CanSignalTimestamped, cfg.MessageBufferSize),
+		filters:       common.NewFilterSet(),
+		l:             logger,
+		resolver:      resolver,
 	}, nil
 }
 
@@ -99,7 +76,7 @@ func (c *CSVClient) AddFilter(name string, filter canModels.FilterInterface) err
 }
 
 func (c *CSVClient) HandleCanMessage(canMsg canModels.CanMessageTimestamped) {
-	if c.w == nil {
+	if c.canWriter == nil {
 		return
 	}
 	if shouldFilter, _ := c.filters.ShouldFilter(canMsg); shouldFilter {
@@ -110,23 +87,27 @@ func (c *CSVClient) HandleCanMessage(canMsg canModels.CanMessageTimestamped) {
 	if conn := c.resolver.ConnectionByID(canMsg.Interface); conn != nil {
 		interfaceName = conn.GetInterfaceName()
 	}
-	row := []string{
-		strconv.FormatInt(canMsg.Timestamp, 10),
-		strconv.FormatUint(uint64(canMsg.ID), 10),
+	if err := c.canWriter.Append(
+		canMsg.Timestamp,
+		uint64(canMsg.ID),
 		interfaceName,
-		strconv.FormatBool(canMsg.Remote),
-		strconv.FormatBool(canMsg.Transmit),
-		strconv.Itoa(int(canMsg.Length)),
-		hex.EncodeToString(canMsg.Data)}
-	if err := c.w.Write(row); err != nil {
+		canMsg.Remote,
+		canMsg.Transmit,
+		int(canMsg.Length),
+		canMsg.Data,
+	); err != nil {
 		c.l.Error("csv write error", "error", err)
 	}
 }
 
 func (c *CSVClient) HandleCanMessageChannel() error {
-	if c.file != nil {
-		defer c.file.Close()
-	}
+	defer func() {
+		if c.canWriter != nil {
+			if err := c.canWriter.Close(); err != nil {
+				c.l.Error("csv close error", "error", err)
+			}
+		}
+	}()
 	done := make(chan struct{})
 	defer close(done)
 	common.StartThroughputReporter(done, c.l, c.GetName(), "can", &c.canMsgCount, func() int { return len(c.canChannel) }, 5*time.Second)
@@ -135,11 +116,10 @@ func (c *CSVClient) HandleCanMessageChannel() error {
 	defer ticker.Stop()
 
 	flush := func() {
-		if c.w == nil {
+		if c.canWriter == nil {
 			return
 		}
-		c.w.Flush()
-		if err := c.w.Error(); err != nil {
+		if err := c.canWriter.Flush(); err != nil {
 			c.l.Error("csv flush error", "error", err)
 		}
 	}
@@ -176,23 +156,26 @@ func (c *CSVClient) HandleSignal(sig canModels.CanSignalTimestamped) {
 	if conn := c.resolver.ConnectionByID(sig.Interface); conn != nil {
 		interfaceName = conn.GetInterfaceName()
 	}
-	row := []string{
-		strconv.FormatInt(sig.Timestamp, 10),
+	if err := c.signalWriter.Append(
+		sig.Timestamp,
 		interfaceName,
 		sig.Message,
 		sig.Signal,
-		strconv.FormatFloat(sig.Value, 'f', -1, 64),
+		sig.Value,
 		sig.Unit,
-	}
-	if err := c.signalWriter.Write(row); err != nil {
+	); err != nil {
 		c.l.Error("csv signal write error", "error", err)
 	}
 }
 
 func (c *CSVClient) HandleSignalChannel() error {
-	if c.signalFile != nil {
-		defer c.signalFile.Close()
-	}
+	defer func() {
+		if c.signalWriter != nil {
+			if err := c.signalWriter.Close(); err != nil {
+				c.l.Error("csv signal close error", "error", err)
+			}
+		}
+	}()
 	done := make(chan struct{})
 	defer close(done)
 	common.StartThroughputReporter(done, c.l, c.GetName(), "signal", &c.signalMsgCount, func() int { return len(c.signalChannel) }, 5*time.Second)
@@ -204,8 +187,7 @@ func (c *CSVClient) HandleSignalChannel() error {
 		if c.signalWriter == nil {
 			return
 		}
-		c.signalWriter.Flush()
-		if err := c.signalWriter.Error(); err != nil {
+		if err := c.signalWriter.Flush(); err != nil {
 			c.l.Error("csv signal flush error", "error", err)
 		}
 	}

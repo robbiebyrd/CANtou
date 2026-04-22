@@ -1,7 +1,6 @@
 package crtd
 
 import (
-	"bufio"
 	"context"
 	"io"
 	"log/slog"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/robbiebyrd/cantou/internal/client/common"
 	canModels "github.com/robbiebyrd/cantou/internal/models"
+	crtdfmt "github.com/robbiebyrd/cantou/internal/parser/crtd"
 )
 
 // mockFilter implements canModels.FilterInterface for testing.
@@ -27,73 +27,67 @@ func silentLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
-// newTestClient creates a CRTDLoggerClient backed by a temp file for testing.
-func newTestClient(t *testing.T) (*CRTDLoggerClient, *os.File) {
+func tempPath(t *testing.T, suffix string) string {
 	t.Helper()
-	f, err := os.CreateTemp("", "crtd_test_*.crtd")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { os.Remove(f.Name()) })
+	f, err := os.CreateTemp("", "crtd_test_*"+suffix)
+	require.NoError(t, err)
+	name := f.Name()
+	require.NoError(t, f.Close())
+	t.Cleanup(func() { os.Remove(name) })
+	return name
+}
+
+// newTestClient creates a CRTDLoggerClient backed by a temp file for testing.
+func newTestClient(t *testing.T) (*CRTDLoggerClient, string) {
+	t.Helper()
+	path := tempPath(t, ".crtd")
+
+	canWriter, err := crtdfmt.NewCANWriter(path, &canModels.Config{})
+	require.NoError(t, err)
 
 	return &CRTDLoggerClient{
-		w:             bufio.NewWriter(f),
-		file:          f,
+		canWriter:     canWriter,
 		canChannel:    make(chan canModels.CanMessageTimestamped, 16),
 		signalChannel: make(chan canModels.CanSignalTimestamped, 16),
 		filters:       common.NewFilterSet(),
 		l:             silentLogger(),
-	}, f
+	}, path
 }
 
 // newSignalTestClient creates a CRTDLoggerClient backed by both CAN and signal temp files.
-func newSignalTestClient(t *testing.T) (*CRTDLoggerClient, *os.File, *os.File) {
+func newSignalTestClient(t *testing.T) (*CRTDLoggerClient, string, string) {
 	t.Helper()
-	canFile, err := os.CreateTemp("", "crtd_can_*.crtd")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { os.Remove(canFile.Name()) })
+	canPath := tempPath(t, ".crtd")
+	sigPath := tempPath(t, ".crtd")
 
-	sigFile, err := os.CreateTemp("", "crtd_sig_*.crtd")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { os.Remove(sigFile.Name()) })
+	canWriter, err := crtdfmt.NewCANWriter(canPath, &canModels.Config{})
+	require.NoError(t, err)
+	sigWriter, err := crtdfmt.NewSignalWriter(sigPath)
+	require.NoError(t, err)
 
 	return &CRTDLoggerClient{
-		w:             bufio.NewWriter(canFile),
-		file:          canFile,
-		signalWriter:  bufio.NewWriter(sigFile),
-		signalFile:    sigFile,
+		canWriter:     canWriter,
+		signalWriter:  sigWriter,
 		canChannel:    make(chan canModels.CanMessageTimestamped, 16),
 		signalChannel: make(chan canModels.CanSignalTimestamped, 16),
 		filters:       common.NewFilterSet(),
 		l:             silentLogger(),
-	}, canFile, sigFile
+	}, canPath, sigPath
 }
 
-func readFileContents(t *testing.T, f *os.File) string {
+func readFileContents(t *testing.T, path string) string {
 	t.Helper()
-	data, err := os.ReadFile(f.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
 	return string(data)
 }
 
 func TestNewClient(t *testing.T) {
-	f, err := os.CreateTemp("", "crtd_newclient_*.crtd")
-	if err != nil {
-		t.Fatal(err)
-	}
-	name := f.Name()
-	f.Close()
-	t.Cleanup(func() { os.Remove(name) })
+	path := tempPath(t, ".crtd")
 
 	ctx := context.Background()
 	cfg := &canModels.Config{
-		CRTDLogger:        canModels.CRTDLogConfig{CanOutputFile: name},
+		CRTDLogger:        canModels.CRTDLogConfig{CanOutputFile: path},
 		MessageBufferSize: 16,
 	}
 
@@ -101,14 +95,9 @@ func TestNewClient(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, client, "NewClient should return a non-nil client")
 
-	data, err := os.ReadFile(name)
-	assert.Nil(t, err, "Should be able to read the output file")
-	assert.Contains(
-		t,
-		string(data),
-		"0.000000 CXX CRTD file created by cantou",
-		"File should contain CRTD header",
-	)
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "0.000000 CXX CRTD file created by cantou")
 }
 
 func TestNewClient_BadPath_ReturnsError(t *testing.T) {
@@ -122,10 +111,10 @@ func TestNewClient_BadPath_ReturnsError(t *testing.T) {
 }
 
 func TestHandle_StandardMessage(t *testing.T) {
-	client, f := newTestClient(t)
+	client, path := newTestClient(t)
 
 	msg := canModels.CanMessageTimestamped{
-		Timestamp: 1000000000, // 1 second in nanoseconds
+		Timestamp: 1000000000,
 		Interface: 0,
 		ID:        0x123,
 		Transmit:  false,
@@ -133,19 +122,14 @@ func TestHandle_StandardMessage(t *testing.T) {
 	}
 
 	client.HandleCanMessage(msg)
-	_ = client.w.Flush()
+	require.NoError(t, client.canWriter.Flush())
 
-	contents := readFileContents(t, f)
-	assert.Contains(
-		t,
-		contents,
-		"1.000000 0R11 123 DE AD BE EF",
-		"Should format standard RX 11-bit message correctly",
-	)
+	contents := readFileContents(t, path)
+	assert.Contains(t, contents, "1.000000 0R11 123 DE AD BE EF")
 }
 
 func TestHandle_TransmitMessage(t *testing.T) {
-	client, f := newTestClient(t)
+	client, path := newTestClient(t)
 
 	msg := canModels.CanMessageTimestamped{
 		Timestamp: 2000000000,
@@ -155,31 +139,29 @@ func TestHandle_TransmitMessage(t *testing.T) {
 	}
 
 	client.HandleCanMessage(msg)
-	_ = client.w.Flush()
+	require.NoError(t, client.canWriter.Flush())
 
-	contents := readFileContents(t, f)
-	assert.Contains(t, contents, "T11", "Transmit message should have record type starting with T")
+	assert.Contains(t, readFileContents(t, path), "T11")
 }
 
 func TestHandle_Extended29BitID(t *testing.T) {
-	client, f := newTestClient(t)
+	client, path := newTestClient(t)
 
 	msg := canModels.CanMessageTimestamped{
 		Timestamp: 3000000000,
-		ID:        0x800, // > 0x7FF
+		ID:        0x800,
 		Transmit:  false,
 		Data:      []byte{0xAA},
 	}
 
 	client.HandleCanMessage(msg)
-	_ = client.w.Flush()
+	require.NoError(t, client.canWriter.Flush())
 
-	contents := readFileContents(t, f)
-	assert.Contains(t, contents, "R29", "Extended ID message should have record type R29")
+	assert.Contains(t, readFileContents(t, path), "R29")
 }
 
 func TestHandle_TransmitExtended(t *testing.T) {
-	client, f := newTestClient(t)
+	client, path := newTestClient(t)
 
 	msg := canModels.CanMessageTimestamped{
 		Timestamp: 4000000000,
@@ -189,14 +171,13 @@ func TestHandle_TransmitExtended(t *testing.T) {
 	}
 
 	client.HandleCanMessage(msg)
-	_ = client.w.Flush()
+	require.NoError(t, client.canWriter.Flush())
 
-	contents := readFileContents(t, f)
-	assert.Contains(t, contents, "T29", "Transmit extended message should have record type T29")
+	assert.Contains(t, readFileContents(t, path), "T29")
 }
 
 func TestHandle_TimestampConversion(t *testing.T) {
-	client, f := newTestClient(t)
+	client, path := newTestClient(t)
 
 	// 5 seconds + 123456 microseconds = 5000123456000 nanoseconds
 	msg := canModels.CanMessageTimestamped{
@@ -206,19 +187,13 @@ func TestHandle_TimestampConversion(t *testing.T) {
 	}
 
 	client.HandleCanMessage(msg)
-	_ = client.w.Flush()
+	require.NoError(t, client.canWriter.Flush())
 
-	contents := readFileContents(t, f)
-	assert.Contains(
-		t,
-		contents,
-		"5000.123456",
-		"Timestamp should be converted to seconds.microseconds",
-	)
+	assert.Contains(t, readFileContents(t, path), "5000.123456")
 }
 
 func TestHandle_EmptyData(t *testing.T) {
-	client, f := newTestClient(t)
+	client, path := newTestClient(t)
 
 	msg := canModels.CanMessageTimestamped{
 		Timestamp: 1000000000,
@@ -227,17 +202,12 @@ func TestHandle_EmptyData(t *testing.T) {
 	}
 
 	client.HandleCanMessage(msg)
-	_ = client.w.Flush()
+	require.NoError(t, client.canWriter.Flush())
 
-	contents := readFileContents(t, f)
+	contents := readFileContents(t, path)
 	lines := strings.Split(strings.TrimSpace(contents), "\n")
-	assert.Equal(t, 1, len(lines), "Should have exactly one line")
-	assert.Contains(
-		t,
-		lines[0],
-		"0R11 7FF",
-		"Should contain the interface ID, record type, and CAN ID",
-	)
+	assert.Equal(t, 2, len(lines), "should have header line and one CAN record")
+	assert.Contains(t, lines[len(lines)-1], "0R11 7FF")
 }
 
 func TestAddFilter(t *testing.T) {
@@ -245,34 +215,28 @@ func TestAddFilter(t *testing.T) {
 
 	filter := &mockFilter{}
 	err := client.AddFilter("test-filter", filter)
-	assert.Nil(t, err, "First AddFilter call should succeed")
+	assert.Nil(t, err)
 
 	err = client.AddFilter("test-filter", filter)
-	assert.NotNil(t, err, "Duplicate filter name should return an error")
-	assert.Contains(
-		t,
-		err.Error(),
-		"filter group already exists",
-		"Error message should mention duplicate filter group",
-	)
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "filter group already exists")
 
 	err = client.AddFilter("another-filter", filter)
-	assert.Nil(t, err, "Adding a filter with a different name should succeed")
+	assert.Nil(t, err)
 }
 
 func TestGetName(t *testing.T) {
 	client, _ := newTestClient(t)
-	assert.Equal(t, "output-crtd", client.GetName(), "GetName should return output-crtd")
+	assert.Equal(t, "output-crtd", client.GetName())
 }
 
 func TestGetChannel(t *testing.T) {
 	client, _ := newTestClient(t)
-	ch := client.GetChannel()
-	assert.NotNil(t, ch, "GetChannel should return a non-nil channel")
+	assert.NotNil(t, client.GetChannel())
 }
 
 func TestHandleChannel(t *testing.T) {
-	client, f := newTestClient(t)
+	client, path := newTestClient(t)
 
 	msgs := []canModels.CanMessageTimestamped{
 		{Timestamp: 1000000000, ID: 0x100, Data: []byte{0x01}},
@@ -288,32 +252,23 @@ func TestHandleChannel(t *testing.T) {
 	}()
 
 	err := client.HandleCanMessageChannel()
-	assert.Nil(t, err, "HandleChannel should return nil after channel is closed")
-
-	contents := readFileContents(t, f)
-	lines := strings.Split(strings.TrimSpace(contents), "\n")
-	assert.Equal(t, 3, len(lines), "Should have written 3 lines, one per message")
-	assert.Contains(t, lines[0], "100", "First line should contain ID 100")
-	assert.Contains(t, lines[1], "200", "Second line should contain ID 200")
-	assert.Contains(t, lines[2], "300", "Third line should contain ID 300")
-}
-
-func TestHandleChannel_ClosesFile(t *testing.T) {
-	client, f := newTestClient(t)
-
-	close(client.canChannel)
-	err := client.HandleCanMessageChannel()
 	assert.Nil(t, err)
 
-	// The file handle should be closed; a second Close call returns an error.
-	assert.Error(t, f.Close(), "file should already be closed after HandleCanMessageChannel returns")
+	contents := readFileContents(t, path)
+	lines := strings.Split(strings.TrimSpace(contents), "\n")
+	// First line is the CRTD header; remaining lines are the CAN records.
+	records := lines[1:]
+	require.Len(t, records, 3)
+	assert.Contains(t, records[0], "100")
+	assert.Contains(t, records[1], "200")
+	assert.Contains(t, records[2], "300")
 }
 
 // TestHandleChannel_DataWrittenAfterChannelClose verifies that all data is
 // flushed and readable after the channel is closed, without relying on
 // per-message flushes.
 func TestHandleChannel_DataWrittenAfterChannelClose(t *testing.T) {
-	client, f := newTestClient(t)
+	client, path := newTestClient(t)
 
 	msgs := []canModels.CanMessageTimestamped{
 		{Timestamp: 1000000000, ID: 0x111, Data: []byte{0xAA}},
@@ -327,19 +282,11 @@ func TestHandleChannel_DataWrittenAfterChannelClose(t *testing.T) {
 		close(client.canChannel)
 	}()
 
-	err := client.HandleCanMessageChannel()
-	assert.Nil(t, err)
+	require.Nil(t, client.HandleCanMessageChannel())
 
-	contents := readFileContents(t, f)
-	assert.Contains(t, contents, "111", "First message ID should be written and flushed")
-	assert.Contains(t, contents, "222", "Second message ID should be written and flushed")
-}
-
-// alwaysFailWriter rejects every write with an error.
-type alwaysFailWriter struct{}
-
-func (alwaysFailWriter) Write(_ []byte) (int, error) {
-	return 0, io.ErrClosedPipe
+	contents := readFileContents(t, path)
+	assert.Contains(t, contents, "111")
+	assert.Contains(t, contents, "222")
 }
 
 func TestCRTDClient_GetSignalChannel(t *testing.T) {
@@ -348,13 +295,12 @@ func TestCRTDClient_GetSignalChannel(t *testing.T) {
 }
 
 func TestCRTDClient_HandleSignal_NilWriter(t *testing.T) {
-	// When no signal file is configured, HandleSignal must be a no-op.
 	client, _ := newTestClient(t)
 	client.HandleSignal(canModels.CanSignalTimestamped{Signal: "RPM", Value: 1000})
 }
 
 func TestCRTDClient_HandleSignal_WritesLine(t *testing.T) {
-	client, _, sigFile := newSignalTestClient(t)
+	client, _, sigPath := newSignalTestClient(t)
 
 	sig := canModels.CanSignalTimestamped{
 		Timestamp: 1000000000,
@@ -365,9 +311,9 @@ func TestCRTDClient_HandleSignal_WritesLine(t *testing.T) {
 		Unit:      "rpm",
 	}
 	client.HandleSignal(sig)
-	_ = client.signalWriter.Flush()
+	require.NoError(t, client.signalWriter.Flush())
 
-	contents := readFileContents(t, sigFile)
+	contents := readFileContents(t, sigPath)
 	assert.Contains(t, contents, "1.000000")
 	assert.Contains(t, contents, "SIG")
 	assert.Contains(t, contents, "ENGINE/RPM")
@@ -376,7 +322,7 @@ func TestCRTDClient_HandleSignal_WritesLine(t *testing.T) {
 }
 
 func TestCRTDClient_HandleSignalChannel(t *testing.T) {
-	client, _, sigFile := newSignalTestClient(t)
+	client, _, sigPath := newSignalTestClient(t)
 
 	sigs := []canModels.CanSignalTimestamped{
 		{Timestamp: 1000000000, Interface: 0, Message: "ENG", Signal: "RPM", Value: 1000, Unit: "rpm"},
@@ -392,26 +338,7 @@ func TestCRTDClient_HandleSignalChannel(t *testing.T) {
 	err := client.HandleSignalChannel()
 	require.NoError(t, err)
 
-	contents := readFileContents(t, sigFile)
+	contents := readFileContents(t, sigPath)
 	assert.Contains(t, contents, "RPM")
 	assert.Contains(t, contents, "TEMP")
-}
-
-// TestNewClient_HeaderFirstLineErrorLogged verifies that a write error on the
-// first header line is surfaced (not silently overwritten by a later write).
-func TestNewClient_HeaderFirstLineErrorLogged(t *testing.T) {
-	var buf strings.Builder
-	handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelError})
-	logger := slog.New(handler)
-
-	cfg := &canModels.Config{
-		CanInterfaces: []canModels.CanInterfaceOption{{Name: "can0"}},
-	}
-
-	// A 1-byte bufio.Writer backed by an always-failing writer forces the first
-	// multi-byte write to overflow into the underlying writer, surfacing the error.
-	w := bufio.NewWriterSize(alwaysFailWriter{}, 1)
-	writeHeader(w, cfg, logger)
-
-	assert.Contains(t, buf.String(), "Could not", "Header write error must be logged")
 }
