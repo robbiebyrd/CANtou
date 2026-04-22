@@ -15,6 +15,12 @@ import (
 	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
+// csvFlushInterval caps how long a buffered row can sit in memory before the
+// underlying csv.Writer is flushed to disk. Short enough to bound data loss
+// on abrupt termination, long enough that high-rate bursts benefit from
+// buffered writes.
+const csvFlushInterval = 1 * time.Second
+
 type CSVClient struct {
 	w              *csv.Writer
 	file           *os.File
@@ -23,7 +29,7 @@ type CSVClient struct {
 	includeHeaders bool
 	canChannel     chan canModels.CanMessageTimestamped
 	signalChannel  chan canModels.CanSignalTimestamped
-	filters        map[string]canModels.FilterInterface
+	filters        *common.FilterSet
 	l              *slog.Logger
 	resolver       canModels.InterfaceResolver
 	canMsgCount    atomic.Uint64
@@ -81,26 +87,22 @@ func NewClient(
 		includeHeaders: cfg.CSVLog.IncludeHeaders,
 		canChannel:     make(chan canModels.CanMessageTimestamped, cfg.MessageBufferSize),
 		signalChannel:  make(chan canModels.CanSignalTimestamped, cfg.MessageBufferSize),
-		filters:        make(map[string]canModels.FilterInterface),
+		filters:        common.NewFilterSet(),
 		l:              logger,
 		resolver:       resolver,
 	}, nil
 }
 
 func (c *CSVClient) AddFilter(name string, filter canModels.FilterInterface) error {
-	if _, ok := c.filters[name]; ok {
-		return fmt.Errorf("filter group already exists: %v", name)
-	}
 	c.l.Debug("creating new filter group", "filterName", name)
-	c.filters[name] = filter
-	return nil
+	return c.filters.Add(name, filter)
 }
 
 func (c *CSVClient) HandleCanMessage(canMsg canModels.CanMessageTimestamped) {
 	if c.w == nil {
 		return
 	}
-	if shouldFilter, _ := common.ShouldFilter(c.filters, canMsg); shouldFilter {
+	if shouldFilter, _ := c.filters.ShouldFilter(canMsg); shouldFilter {
 		return
 	}
 
@@ -128,17 +130,33 @@ func (c *CSVClient) HandleCanMessageChannel() error {
 	done := make(chan struct{})
 	defer close(done)
 	common.StartThroughputReporter(done, c.l, c.GetName(), "can", &c.canMsgCount, func() int { return len(c.canChannel) }, 5*time.Second)
-	for canMsg := range c.canChannel {
-		c.canMsgCount.Add(1)
-		c.HandleCanMessage(canMsg)
-	}
-	if c.w != nil {
+
+	ticker := time.NewTicker(csvFlushInterval)
+	defer ticker.Stop()
+
+	flush := func() {
+		if c.w == nil {
+			return
+		}
 		c.w.Flush()
 		if err := c.w.Error(); err != nil {
 			c.l.Error("csv flush error", "error", err)
 		}
 	}
-	return nil
+
+	for {
+		select {
+		case canMsg, ok := <-c.canChannel:
+			if !ok {
+				flush()
+				return nil
+			}
+			c.canMsgCount.Add(1)
+			c.HandleCanMessage(canMsg)
+		case <-ticker.C:
+			flush()
+		}
+	}
 }
 
 func (c *CSVClient) GetChannel() chan canModels.CanMessageTimestamped {
@@ -178,17 +196,33 @@ func (c *CSVClient) HandleSignalChannel() error {
 	done := make(chan struct{})
 	defer close(done)
 	common.StartThroughputReporter(done, c.l, c.GetName(), "signal", &c.signalMsgCount, func() int { return len(c.signalChannel) }, 5*time.Second)
-	for sig := range c.signalChannel {
-		c.signalMsgCount.Add(1)
-		c.HandleSignal(sig)
-	}
-	if c.signalWriter != nil {
+
+	ticker := time.NewTicker(csvFlushInterval)
+	defer ticker.Stop()
+
+	flush := func() {
+		if c.signalWriter == nil {
+			return
+		}
 		c.signalWriter.Flush()
 		if err := c.signalWriter.Error(); err != nil {
 			c.l.Error("csv signal flush error", "error", err)
 		}
 	}
-	return nil
+
+	for {
+		select {
+		case sig, ok := <-c.signalChannel:
+			if !ok {
+				flush()
+				return nil
+			}
+			c.signalMsgCount.Add(1)
+			c.HandleSignal(sig)
+		case <-ticker.C:
+			flush()
+		}
+	}
 }
 
 func (c *CSVClient) GetName() string {

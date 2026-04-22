@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/robbiebyrd/cantou/internal/client/common"
 	canModels "github.com/robbiebyrd/cantou/internal/models"
 )
 
@@ -59,7 +60,7 @@ func newTestClient(t *testing.T, resolver canModels.InterfaceResolver) (*CSVClie
 		file:          f,
 		canChannel:    make(chan canModels.CanMessageTimestamped, 16),
 		signalChannel: make(chan canModels.CanSignalTimestamped, 16),
-		filters:       make(map[string]canModels.FilterInterface),
+		filters:       common.NewFilterSet(),
 		l:             silentLogger(),
 		resolver:      resolver,
 	}, f
@@ -83,7 +84,7 @@ func newSignalTestClient(t *testing.T, resolver canModels.InterfaceResolver) (*C
 		signalFile:    sigFile,
 		canChannel:    make(chan canModels.CanMessageTimestamped, 16),
 		signalChannel: make(chan canModels.CanSignalTimestamped, 16),
-		filters:       make(map[string]canModels.FilterInterface),
+		filters:       common.NewFilterSet(),
 		l:             silentLogger(),
 		resolver:      resolver,
 	}, canFile, sigFile
