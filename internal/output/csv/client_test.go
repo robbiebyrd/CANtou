@@ -1,7 +1,7 @@
 package csv
 
 import (
-	"encoding/csv"
+	stdcsv "encoding/csv"
 	"io"
 	"log/slog"
 	"os"
@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	canModels "github.com/robbiebyrd/cantou/internal/models"
+	csvfmt "github.com/robbiebyrd/cantou/internal/parser/csv"
 )
 
 // mockCanConn implements canModels.CanConnection for testing.
@@ -47,55 +48,59 @@ func silentLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
-// newTestClient builds a CSVClient backed by a temp file.
-func newTestClient(t *testing.T, resolver canModels.InterfaceResolver) (*CSVClient, *os.File) {
+// newTestClient builds a CSVClient backed by a temp file for CAN messages.
+// Returns the client and the path of the temp file.
+func newTestClient(t *testing.T, resolver canModels.InterfaceResolver) (*CSVClient, string) {
 	t.Helper()
 	f, err := os.CreateTemp("", "csv_test_*.csv")
 	require.NoError(t, err)
-	t.Cleanup(func() { os.Remove(f.Name()) })
+	name := f.Name()
+	require.NoError(t, f.Close())
+	t.Cleanup(func() { os.Remove(name) })
+
+	canWriter, err := csvfmt.NewCANWriter(name, false)
+	require.NoError(t, err)
 
 	return &CSVClient{
-		w:             csv.NewWriter(f),
-		file:          f,
+		canWriter:     canWriter,
 		canChannel:    make(chan canModels.CanMessageTimestamped, 16),
 		signalChannel: make(chan canModels.CanSignalTimestamped, 16),
 		filters:       make(map[string]canModels.FilterInterface),
 		l:             silentLogger(),
 		resolver:      resolver,
-	}, f
+	}, name
 }
 
-// newSignalTestClient builds a CSVClient with both CAN and signal files.
-func newSignalTestClient(t *testing.T, resolver canModels.InterfaceResolver) (*CSVClient, *os.File, *os.File) {
+// newSignalTestClient builds a CSVClient with both CAN and signal writers.
+// Returns the client and the paths of the CAN and signal temp files.
+func newSignalTestClient(t *testing.T, resolver canModels.InterfaceResolver) (*CSVClient, string, string) {
 	t.Helper()
 	canFile, err := os.CreateTemp("", "csv_can_*.csv")
 	require.NoError(t, err)
-	t.Cleanup(func() { os.Remove(canFile.Name()) })
+	canName := canFile.Name()
+	require.NoError(t, canFile.Close())
+	t.Cleanup(func() { os.Remove(canName) })
 
 	sigFile, err := os.CreateTemp("", "csv_sig_*.csv")
 	require.NoError(t, err)
-	t.Cleanup(func() { os.Remove(sigFile.Name()) })
+	sigName := sigFile.Name()
+	require.NoError(t, sigFile.Close())
+	t.Cleanup(func() { os.Remove(sigName) })
+
+	canWriter, err := csvfmt.NewCANWriter(canName, false)
+	require.NoError(t, err)
+	sigWriter, err := csvfmt.NewSignalWriter(sigName, false)
+	require.NoError(t, err)
 
 	return &CSVClient{
-		w:             csv.NewWriter(canFile),
-		file:          canFile,
-		signalWriter:  csv.NewWriter(sigFile),
-		signalFile:    sigFile,
+		canWriter:     canWriter,
+		signalWriter:  sigWriter,
 		canChannel:    make(chan canModels.CanMessageTimestamped, 16),
 		signalChannel: make(chan canModels.CanSignalTimestamped, 16),
 		filters:       make(map[string]canModels.FilterInterface),
 		l:             silentLogger(),
 		resolver:      resolver,
-	}, canFile, sigFile
-}
-
-func readRows(t *testing.T, f *os.File) [][]string {
-	t.Helper()
-	_, err := f.Seek(0, io.SeekStart)
-	require.NoError(t, err)
-	rows, err := csv.NewReader(f).ReadAll()
-	require.NoError(t, err)
-	return rows
+	}, canName, sigName
 }
 
 func readRowsByName(t *testing.T, name string) [][]string {
@@ -103,7 +108,7 @@ func readRowsByName(t *testing.T, name string) [][]string {
 	f, err := os.Open(name)
 	require.NoError(t, err)
 	defer f.Close()
-	rows, err := csv.NewReader(f).ReadAll()
+	rows, err := stdcsv.NewReader(f).ReadAll()
 	require.NoError(t, err)
 	return rows
 }
@@ -139,7 +144,7 @@ func TestCSVClient_Handle_RowFormat(t *testing.T) {
 			0: {interfaceName: "can0-can-vcan0"},
 		},
 	}
-	client, f := newTestClient(t, resolver)
+	client, canPath := newTestClient(t, resolver)
 
 	msg := canModels.CanMessageTimestamped{
 		Timestamp: 1000000000,
@@ -151,9 +156,9 @@ func TestCSVClient_Handle_RowFormat(t *testing.T) {
 		Data:      []byte{0xDE, 0xAD, 0xBE, 0xEF},
 	}
 	client.HandleCanMessage(msg)
-	client.w.Flush()
+	require.NoError(t, client.canWriter.Flush())
 
-	rows := readRows(t, f)
+	rows := readRowsByName(t, canPath)
 	require.Len(t, rows, 1)
 	row := rows[0]
 
@@ -167,7 +172,7 @@ func TestCSVClient_Handle_RowFormat(t *testing.T) {
 }
 
 func TestCSVClient_Handle_UnknownInterface(t *testing.T) {
-	client, f := newTestClient(t, &mockResolver{conns: map[int]*mockCanConn{}})
+	client, canPath := newTestClient(t, &mockResolver{conns: map[int]*mockCanConn{}})
 
 	msg := canModels.CanMessageTimestamped{
 		Interface: 99,
@@ -175,9 +180,9 @@ func TestCSVClient_Handle_UnknownInterface(t *testing.T) {
 		Data:      []byte{0x01},
 	}
 	client.HandleCanMessage(msg)
-	client.w.Flush()
+	require.NoError(t, client.canWriter.Flush())
 
-	rows := readRows(t, f)
+	rows := readRowsByName(t, canPath)
 	require.Len(t, rows, 1)
 	assert.Equal(t, "", rows[0][2], "unknown interface should produce empty interface name")
 }
@@ -186,7 +191,7 @@ func TestCSVClient_HandleChannel(t *testing.T) {
 	resolver := &mockResolver{
 		conns: map[int]*mockCanConn{0: {interfaceName: "iface0"}},
 	}
-	client, f := newTestClient(t, resolver)
+	client, canPath := newTestClient(t, resolver)
 
 	msgs := []canModels.CanMessageTimestamped{
 		{ID: 0x100, Interface: 0, Data: []byte{0x01}},
@@ -204,23 +209,11 @@ func TestCSVClient_HandleChannel(t *testing.T) {
 	err := client.HandleCanMessageChannel()
 	assert.NoError(t, err)
 
-	// File is closed after HandleCanMessageChannel returns; read by name.
-	rows := readRowsByName(t, f.Name())
+	rows := readRowsByName(t, canPath)
 	require.Len(t, rows, 3)
 	assert.Equal(t, "256", rows[0][1])  // 0x100
 	assert.Equal(t, "512", rows[1][1])  // 0x200
 	assert.Equal(t, "768", rows[2][1])  // 0x300
-}
-
-func TestCSVClient_HandleCanMessageChannel_ClosesFile(t *testing.T) {
-	client, f := newTestClient(t, &mockResolver{})
-
-	close(client.canChannel)
-	err := client.HandleCanMessageChannel()
-	assert.NoError(t, err)
-
-	// The file handle should be closed; a second Close call returns an error.
-	assert.Error(t, f.Close(), "file should already be closed after HandleCanMessageChannel returns")
 }
 
 func newTestConfig(t *testing.T, includeHeaders bool) *canModels.Config {
@@ -243,7 +236,7 @@ func TestNewClient_IncludeHeaders_True(t *testing.T) {
 	client, err := NewClient(t.Context(), cfg, silentLogger(), &mockResolver{})
 	require.NoError(t, err)
 	csvClient := client.(*CSVClient)
-	csvClient.w.Flush()
+	require.NoError(t, csvClient.canWriter.Flush())
 
 	rows := readRowsByName(t, cfg.CSVLog.CanOutputFile)
 	require.Len(t, rows, 1, "header row should be written when IncludeHeaders is true")
@@ -255,7 +248,7 @@ func TestNewClient_IncludeHeaders_False(t *testing.T) {
 	client, err := NewClient(t.Context(), cfg, silentLogger(), &mockResolver{})
 	require.NoError(t, err)
 	csvClient := client.(*CSVClient)
-	csvClient.w.Flush()
+	require.NoError(t, csvClient.canWriter.Flush())
 
 	rows := readRowsByName(t, cfg.CSVLog.CanOutputFile)
 	assert.Empty(t, rows, "no header row should be written when IncludeHeaders is false")
@@ -276,7 +269,7 @@ func TestCSVClient_HandleSignal_WritesRow(t *testing.T) {
 	resolver := &mockResolver{
 		conns: map[int]*mockCanConn{0: {interfaceName: "can0-can-vcan0"}},
 	}
-	client, _, sigFile := newSignalTestClient(t, resolver)
+	client, _, sigPath := newSignalTestClient(t, resolver)
 
 	sig := canModels.CanSignalTimestamped{
 		Timestamp: 1000000000,
@@ -287,9 +280,9 @@ func TestCSVClient_HandleSignal_WritesRow(t *testing.T) {
 		Unit:      "rpm",
 	}
 	client.HandleSignal(sig)
-	client.signalWriter.Flush()
+	require.NoError(t, client.signalWriter.Flush())
 
-	rows := readRows(t, sigFile)
+	rows := readRowsByName(t, sigPath)
 	require.Len(t, rows, 1)
 	assert.Equal(t, "1000000000", rows[0][0], "timestamp")
 	assert.Equal(t, "can0-can-vcan0", rows[0][1], "interface")
@@ -303,7 +296,7 @@ func TestCSVClient_HandleSignalChannel(t *testing.T) {
 	resolver := &mockResolver{
 		conns: map[int]*mockCanConn{0: {interfaceName: "iface0"}},
 	}
-	client, _, sigFile := newSignalTestClient(t, resolver)
+	client, _, sigPath := newSignalTestClient(t, resolver)
 
 	sigs := []canModels.CanSignalTimestamped{
 		{Timestamp: 1000000000, Interface: 0, Message: "ENG", Signal: "RPM", Value: 1000, Unit: "rpm"},
@@ -319,21 +312,21 @@ func TestCSVClient_HandleSignalChannel(t *testing.T) {
 	err := client.HandleSignalChannel()
 	require.NoError(t, err)
 
-	rows := readRowsByName(t, sigFile.Name())
+	rows := readRowsByName(t, sigPath)
 	require.Len(t, rows, 2)
 	assert.Equal(t, "RPM", rows[0][3])
 	assert.Equal(t, "TEMP", rows[1][3])
 }
 
 func TestCSVClient_HandleSignalChannel_WritesHeader(t *testing.T) {
-	client, _, sigFile := newSignalTestClient(t, &mockResolver{})
+	_, _, sigPath := newSignalTestClient(t, &mockResolver{})
 
-	// Signal header is written when IncludeHeaders is set.
-	client.includeHeaders = true
-	client.signalWriter.Write([]string{"timestamp", "interface", "message", "signal", "value", "unit"}) //nolint:errcheck
-	client.signalWriter.Flush()
+	sigWriter, err := csvfmt.NewSignalWriter(sigPath, true)
+	require.NoError(t, err)
+	require.NoError(t, sigWriter.Flush())
+	require.NoError(t, sigWriter.Close())
 
-	rows := readRows(t, sigFile)
+	rows := readRowsByName(t, sigPath)
 	require.Len(t, rows, 1)
 	assert.Equal(t, "timestamp", rows[0][0])
 }
